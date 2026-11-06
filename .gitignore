@@ -1,0 +1,10 @@
+# Runtime state generated inside skill folders — never source.
+.write-lock
+state.json
+.collection-cache.json
+lifecycle.html
+graph.html
+
+__pycache__/
+*.pyc
+.DS_Store

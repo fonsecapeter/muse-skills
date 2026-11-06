@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Check that the repo and the live links agree with manifest.json.
+
+Two checks: every roster skill exists in its bucket with a
+SKILL.md, and bin/link-skills --check finds no drift in the
+destination. This is the deterministic half of the sanity pass that
+runs after each skill migration; the rest (catalog census, cron
+read-back) is checked by hand.
+
+Usage:
+    bin/verify [--repo PATH] [--dest PATH] [--manifest PATH]
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def roster_problems(repo: Path, manifest_path: Path) -> list[str]:
+    try:
+        data = json.loads(manifest_path.read_text())
+        skills = data["skills"]
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        return [f"cannot read roster from {manifest_path}: {err}"]
+    problems = []
+    for item in skills:
+        skill_dir = repo / item["bucket"] / item["name"]
+        if not skill_dir.is_dir():
+            problems.append(f"roster skill missing from repo: {skill_dir}")
+        elif not (skill_dir / "SKILL.md").is_file():
+            problems.append(f"roster skill has no SKILL.md: {skill_dir}")
+    return problems
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Verify the repo and live links against the roster."
+    )
+    parser.add_argument("--repo", type=Path,
+                        default=Path(__file__).resolve().parent.parent)
+    parser.add_argument("--dest", type=Path,
+                        default=Path.home() / "workspace" / "custom-skills")
+    parser.add_argument("--manifest", type=Path, default=None)
+    args = parser.parse_args(argv)
+
+    repo = args.repo.resolve()
+    dest = args.dest.expanduser().resolve()
+    manifest = args.manifest or repo / "manifest.json"
+
+    problems = roster_problems(repo, manifest)
+    sibling_link_skills = Path(__file__).resolve().parent / "link-skills"
+    link_check = subprocess.run(
+        [sys.executable, str(sibling_link_skills), "--check",
+         "--repo", str(repo), "--dest", str(dest),
+         "--manifest", str(manifest)],
+        capture_output=True, text=True,
+    )
+    for line in (link_check.stdout + link_check.stderr).splitlines():
+        print(f"links: {line}")
+    if link_check.returncode != 0:
+        problems.append("link drift (see above)")
+    for problem in problems:
+        print(f"FAIL {problem}")
+    if problems:
+        return 1
+    print("verify ok: roster and links agree")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
