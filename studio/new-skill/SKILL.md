@@ -3,8 +3,7 @@
 # New Skill
 
 Creates a new personal skill in the muse-skills repo, linked live
-into `~/workspace/custom-skills/`. This skill is a
-thin wrapper, not a replacement:
+into `~/workspace/custom-skills/`. Two sources govern the work:
 
 - The **built-in `skill-creator` skill**
   (`/opt/muse/skills/skill-creator`) owns the mechanics of authoring a
@@ -24,7 +23,11 @@ thin wrapper, not a replacement:
    SKILL.md, machine values in `config.md`, deterministic work scripted
    as `bin/` CLIs wherever possible, crons as one-liners, declared
    Dependencies, learning-loop deferral. Apply throughout drafting — not
-   as a cleanup pass at the end.
+   as a cleanup pass at the end. Author in Muse's format:
+   `skill.yaml` carries the name, title, and description — the
+   description is the trigger text Muse matches on, so
+   when-it-applies goes there, not in the body. Keep the body lean:
+   instructions only, no prose describing the skill itself.
 3. **Draft the skill in the repo**, in the bucket it belongs to:
    `~/projects/muse-skills/<bucket>/<name>/` (bare name, no prefix).
    Add its entry to the repo's `manifest.json` roster.

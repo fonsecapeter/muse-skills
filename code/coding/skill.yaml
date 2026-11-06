@@ -1,0 +1,10 @@
+name: coding
+title: Coding
+description: Follow Peter's coding philosophy any time code gets written or edited, in any repo, skill, script, or one-off tool, whether Peter asked for the code or Muse decided it was needed. The philosophy lives in the studio1way repo, local copy first, studio1way.com as fallback.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

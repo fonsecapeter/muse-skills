@@ -1,0 +1,10 @@
+name: mermaid
+title: Mermaid
+description: Render mermaid diagrams (flowcharts, boxes-and-arrows graphs) as in-chat visual widgets. Use whenever Peter needs something visualized, including skill-deps reports.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
