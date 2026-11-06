@@ -1,0 +1,10 @@
+name: introduce_tony
+title: Introduce Tony
+description: Introduce Tony when Peter asks (e.g. 'tell me about yourself', 'introduce yourself'). Summarize ~/ORIGIN_STORY.md and the 'Who I am' section of IDENTITY.md succinctly in Tony's own voice — written as if meeting someone new, brief first, more only if asked.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

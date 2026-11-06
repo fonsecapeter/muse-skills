@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""Map dependencies across the personal skills.
+
+Reads each skill's `## Dependencies` section in SKILL.md, verifies the
+declared targets exist, and prints an indented tree plus a mermaid graph.
+Also flags cross-skill CLI references that aren't declared.
+
+Scans the tree listed in config.md's `skills_dirs`
+(~/workspace/custom-skills — the single skill tree since the
+2026-11-05 consolidation). Directory names are normalized by
+stripping a leading `local-`/`local_` prefix. Directories in
+`exclude_dirs` are not standalone skills (note folders, amendments)
+and are skipped.
+
+Usage: bin/map [--tree] [--mermaid]
+"""
+import os
+import re
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SKILL_DIR = os.path.dirname(HERE)
+
+
+def read_config():
+    """skills_dirs + exclude_dirs from the fenced yaml block in config.md."""
+    text = open(os.path.join(SKILL_DIR, "config.md")).read()
+    m = re.search(r"```yaml\n(.*?)```", text, re.S)
+    cfg = {}
+    key = None
+    for line in m.group(1).splitlines():
+        if line.startswith("  - ") or line.startswith("- "):
+            if key:
+                cfg.setdefault(key, []).append(line.strip()[2:].strip())
+            continue
+        if ":" in line:
+            k, v = line.split(":", 1)
+            key = k.strip()
+            v = v.strip()
+            if v:
+                cfg[key] = v
+            else:
+                cfg.setdefault(key, [])
+    dirs = cfg.get("skills_dirs") or (
+        [cfg["skills_dir"]] if "skills_dir" in cfg else []
+    )
+    return (
+        [os.path.abspath(os.path.expanduser(d)) for d in dirs],
+        set(cfg.get("exclude_dirs") or []),
+    )
+
+
+def canonical(dirname):
+    """Strip a leading local- / local_ prefix (custom-skills naming)."""
+    for prefix in ("local-", "local_"):
+        if dirname.startswith(prefix):
+            return dirname[len(prefix):]
+    return dirname
+
+
+def build_skill_dirs(trees, exclude):
+    """canonical skill name -> [skill dirs, in tree order]."""
+    skill_dirs = {}
+    for tree in trees:
+        if not os.path.isdir(tree):
+            continue
+        for dirname in sorted(os.listdir(tree)):
+            if dirname in exclude:
+                continue
+            path = os.path.join(tree, dirname)
+            if not os.path.isdir(path):
+                continue
+            skill_dirs.setdefault(canonical(dirname), []).append(path)
+    return skill_dirs
+
+
+def parse_deps(paths, skill):
+    """Return [(name, detail, why)] from the skill's ## Dependencies section."""
+    path = os.path.join(paths[0], "SKILL.md")
+    if not os.path.isfile(path):
+        return None
+    text = open(path).read()
+    # Ignore fenced code blocks (convention examples live in them).
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    m = re.search(r"^## Dependencies\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    if not m:
+        return None
+    deps = []
+    for line in m.group(1).splitlines():
+        line = line.strip()
+        if not line.startswith("- "):
+            continue
+        body = line[2:]
+        if body.startswith("(none"):
+            continue
+        dm = re.match(r"(\S+)\s+\(([^)]+)\)\s*[—-]\s*(.*)", body)
+        if dm:
+            deps.append((dm.group(1), dm.group(2), dm.group(3)))
+        else:
+            deps.append((body, "?", "unparsed line"))
+    return deps
+
+
+def verify(paths, skills, name, detail):
+    """Return an error string, or None if the dep checks out."""
+    if detail.startswith("external"):
+        return None
+    if name not in skills:
+        return f"unknown skill '{name}'"
+    if detail.startswith("bin/"):
+        if not any(os.path.isfile(os.path.join(p, detail)) for p in paths):
+            return f"missing CLI '{detail}' in skill '{name}'"
+    return None
+
+
+def find_undeclared(paths, skill, declared, canonical_names):
+    """Grep for other skills' bin/ paths referenced but not declared."""
+    hits = []
+    roots = []
+    for p in paths:
+        roots.append(os.path.join(p, "SKILL.md"))
+        bindir = os.path.join(p, "bin")
+        if os.path.isdir(bindir):
+            roots += [os.path.join(bindir, f) for f in os.listdir(bindir)]
+    for other in canonical_names:
+        if other == skill or other in declared:
+            continue
+        for root in roots:
+            if not os.path.isfile(root):
+                continue
+            try:
+                text = open(root, errors="ignore").read()
+            except OSError:
+                continue
+            if re.search(
+                rf"(?:\./|skills/|custom-skills/)(?:local[-_])?"
+                rf"{re.escape(other)}/bin/\S+",
+                text,
+            ):
+                hits.append(other)
+                break
+    return sorted(set(hits))
+
+
+def find_renderer(trees, skill_dirs):
+    """mermaid bin/render in either tree."""
+    for name in ("mermaid",):
+        for path in skill_dirs.get(name, []):
+            renderer = os.path.join(path, "bin", "render")
+            if os.path.isfile(renderer):
+                return renderer
+    return None
+
+
+def main():
+    args = sys.argv[1:]
+    want_tree = not args or "--tree" in args
+    want_mermaid = not args or "--mermaid" in args
+    render_at = args.index("--render") if "--render" in args else None
+
+    trees, exclude = read_config()
+    skill_dirs = build_skill_dirs(trees, exclude)
+    skills = sorted(skill_dirs)
+
+    graph = {}   # skill -> [(name, detail, why, err)]
+    warnings = []
+    for skill in skills:
+        paths = skill_dirs[skill]
+        deps = parse_deps(paths, skill)
+        if deps is None:
+            warnings.append(f"{skill}: no ## Dependencies section")
+            deps = []
+        declared = {n for n, _, _ in deps}
+        rows = []
+        for name, detail, why in deps:
+            err = verify(skill_dirs.get(name, []), skills, name, detail)
+            if err:
+                warnings.append(f"{skill} -> {name}: {err}")
+            rows.append((name, detail, why, err))
+        for other in find_undeclared(paths, skill, declared | {skill}, skills):
+            warnings.append(f"{skill}: references {other}/bin/ but does not declare it")
+        graph[skill] = rows
+
+    if want_tree:
+        print("skills/")
+        for skill in skills:
+            rows = graph[skill]
+            print(f"  {skill}/")
+            for i, (name, detail, why, err) in enumerate(rows):
+                last = i == len(rows) - 1
+                branch = "└─" if last else "├─"
+                flag = f"  ⚠ {err}" if err else ""
+                ext = " [external]" if detail.startswith("external") else ""
+                print(f"  │  {branch} {name} ({detail}){ext} — {why}{flag}")
+        print()
+
+    if want_mermaid or render_at is not None:
+        lines = ["graph TD"]
+        for skill in skills:
+            safe = re.sub(r"\W", "_", skill)
+            for name, detail, why, err in graph[skill]:
+                nsafe = re.sub(r"\W", "_", name)
+                lines.append(f"    {safe} --> {nsafe}")
+                if detail.startswith("external"):
+                    lines.append(f"    class {nsafe} ext")
+        lines.append("    classDef ext fill:#eee,stroke:#999,stroke-dasharray: 5 5")
+        src = "\n".join(lines)
+
+        if render_at is not None:
+            out = None
+            rest = args[render_at + 1:]
+            if rest[:1] == ["--out"] and len(rest) > 1:
+                out = rest[1]
+            renderer = find_renderer(trees, skill_dirs)
+            if renderer is None:
+                warnings.append("mermaid skill not found; cannot --render")
+            else:
+                cmd = [renderer] + (["--out", out] if out else [])
+                p = subprocess.run(cmd, input=src, capture_output=True,
+                                   text=True)
+                if p.returncode == 0:
+                    print(p.stdout.strip())
+                else:
+                    warnings.append(
+                        f"mermaid render failed: {p.stderr.strip()}")
+        else:
+            print("```mermaid")
+            print(src)
+            print("```")
+            print()
+
+    if warnings:
+        print("warnings:")
+        for w in warnings:
+            print(f"  ! {w}")
+    else:
+        print("no warnings — all declared dependencies resolve.")
+
+
+if __name__ == "__main__":
+    main()
