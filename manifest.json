@@ -17,6 +17,18 @@
     {
       "bucket": "studio",
       "name": "introduce-tony"
+    },
+    {
+      "name": "coding",
+      "bucket": "code"
+    },
+    {
+      "name": "studio1way-add-project",
+      "bucket": "code"
+    },
+    {
+      "name": "mermaid",
+      "bucket": "code"
     }
   ]
 }

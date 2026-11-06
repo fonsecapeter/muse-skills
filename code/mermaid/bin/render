@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Wrap a mermaid diagram definition in the widget HTML shell.
+
+Reads the definition from a file argument or stdin, writes a compact
+HTML fragment that loads mermaid.js (CDN pinned in config.md) and renders
+the diagram on load. Prints the output path and nothing else.
+
+Usage: bin/render [--out FILE] [diagram.mmd]
+"""
+import json
+import os
+import re
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SKILL_DIR = os.path.dirname(HERE)
+
+
+def read_config():
+    text = open(os.path.join(SKILL_DIR, "config.md")).read()
+    m = re.search(r"```yaml\n(.*?)```", text, re.S)
+    cfg = {}
+    for line in m.group(1).splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            cfg[k.strip()] = v.strip()
+    return cfg
+
+
+def main():
+    args = sys.argv[1:]
+    out = None
+    src_file = None
+    i = 0
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            out = args[i + 1]
+            i += 2
+        else:
+            src_file = args[i]
+            i += 1
+
+    if src_file:
+        diagram = open(src_file).read()
+    else:
+        diagram = sys.stdin.read()
+
+    diagram = diagram.strip()
+    if not diagram:
+        sys.stderr.write("bin/render: empty diagram definition\n")
+        sys.exit(1)
+    # Strip a wrapping ```mermaid fence if the caller passed one through.
+    diagram = re.sub(r"^```mermaid\n", "", diagram)
+    diagram = re.sub(r"\n```$", "", diagram)
+
+    cfg = read_config()
+    cdn = cfg["mermaid_cdn"]
+    uid = f"mmd{int(time.time() * 1000)}"
+
+    html = (
+        f'<div id="{uid}" style="width:100%;overflow-x:auto;'
+        'text-align:center;padding:8px 0;"></div>\n'
+        f'<script src="{cdn}"></script>\n'
+        "<script>\n"
+        "(function () {\n"
+        f"  var def = {json.dumps(diagram)};\n"
+        "  mermaid.initialize({ startOnLoad: false, theme: \"base\","
+        " flowchart: { nodeSpacing: 36, rankSpacing: 55,"
+        " useMaxWidth: true } });\n"
+        f"  mermaid.render(\"{uid}-svg\", def).then(function (r) {{\n"
+        f"    document.getElementById(\"{uid}\").innerHTML = r.svg;\n"
+        "  }).catch(function (e) {\n"
+        f"    document.getElementById(\"{uid}\").textContent ="
+        " \"Graph failed to render.\";\n"
+        "  });\n"
+        "})();\n"
+        "</script>\n"
+    )
+
+    if out is None:
+        out = f"/tmp/mermaid-{int(time.time())}.html"
+    with open(out, "w") as f:
+        f.write(html)
+    print(out)
+
+
+if __name__ == "__main__":
+    main()
