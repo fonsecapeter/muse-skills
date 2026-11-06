@@ -4,6 +4,10 @@ state.json
 .collection-cache.json
 lifecycle.html
 graph.html
+# Learning-loop working files: pending queues + the append-only log
+# live next to their skills, not in git.
+learnings.md
+learned.md
 
 __pycache__/
 *.pyc

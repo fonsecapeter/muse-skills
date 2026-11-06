@@ -1,0 +1,10 @@
+name: skill_deps
+title: Skill deps
+description: 'Map the dependency graph across Peter''s personal skills: parse each skill''s Dependencies section, verify the targets exist, and print a compact tree plus a mermaid graph. Deterministic.'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
