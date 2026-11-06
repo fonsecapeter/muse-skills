@@ -1,0 +1,10 @@
+name: sweep_learnings
+title: Sweep Learnings
+description: The nightly skill learning sweep: implement the central learning log's pending entries into the skills on a repo branch, open a diff for Peter, drop the implemented entries, and audit the skills against the conventions.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

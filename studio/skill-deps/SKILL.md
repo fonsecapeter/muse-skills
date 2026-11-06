@@ -45,7 +45,7 @@ Example:
 ```
 ## Dependencies
 - notion (bin/notion-api) — reads the TODO database; never reimplement auth
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop
 ```
 
 New skills: the new-skill skill requires this section — it wraps the
@@ -54,13 +54,13 @@ calls another skill's CLI, it must be declared here.
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning skill-deps "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning skill-deps "<learning>"`.
 
 ## Dependencies
 
 - mermaid (bin/render) — render the map's mermaid output as a widget (--render)
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop
 ## Available connectors
 
 Use `muse.connector_search` to find the current connector docs before following

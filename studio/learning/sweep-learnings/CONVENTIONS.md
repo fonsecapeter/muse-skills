@@ -2,7 +2,7 @@
 
 Canonical conventions for Peter's personal skills (the muse-skills
 repo, symlinked into `~/workspace/custom-skills/`).
-Owned by the learning-loop skill; enforced by its nightly audit.
+Owned by the sweep-learnings skill; enforced by its nightly audit.
 **Follow these while drafting and while editing — every version complies,
 not just the first.** The nightly sweep audits for drift; it is not a
 substitute for following the conventions.
@@ -95,16 +95,19 @@ substitute for following the conventions.
 
 ## Learning loop
 
-- A `## Learning loop` section deferring to the learning-loop skill,
+- A `## Learning loop` section deferring to the record-learning skill,
   exactly like the existing custom skills. Record learnings the moment they
-  surface: `~/workspace/custom-skills/learning-loop/bin/record-learning
+  surface: `~/workspace/custom-skills/record-learning/bin/record-learning
   <skill-name> "<learning>"`. A correction from Peter is an automatic
-  trigger — record it in the same turn, unprompted.
-- The nightly sweep implements pending learnings into the skills, moves
-  each implemented learning into the central learned log (learning +
-  change + skill id), then clears the pending entries. It also reviews
-  recent learned entries for broader patterns and audits every skill
-  against this file.
+  trigger — record it in the same turn, unprompted. Learnings that span
+  skills are tagged `cross-skill` in the same central log.
+- All pending learnings live in one central log
+  (`~/workspace/learning-log/learnings.md`, outside source control),
+  each line tagged with its skill. Before editing a skill, check the
+  log for its entries; whoever implements an entry removes its line.
+  The nightly sweep works the whole log, opens a diff of its changes,
+  and audits every skill against this file — the diff and the repo's
+  history are the record of what changed, so no learned log is kept.
 
 ## Standing rules
 

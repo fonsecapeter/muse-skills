@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Append a dated learning to the central learning log.
+
+All pending learnings live in one file — <log_dir>/learnings.md
+(log_dir from ../config.md; reads skills_dirs and timezone from
+the same block). Each entry is one line tagged with its skill:
+
+    - [2026-11-06] [simi-claims] the learning text
+
+Learnings that span skills, or belong to no single skill, use the
+tag cross-skill instead of a skill name. Skill names are matched
+against the live tree after stripping a leading local-/local_
+prefix, so a skill resolves by its bare name or its legacy
+prefixed name — and a name that resolves to nothing is an error,
+which keeps the tags honest.
+
+Usage:
+    bin/record-learning <skill-name> "<learning>"
+    bin/record-learning cross-skill "<learning>"
+"""
+import json
+import re
+import sys
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+SKILL_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_config():
+    text = (SKILL_DIR / "config.md").read_text()
+    block = re.search(r"```json\s*(.*?)```", text, re.S).group(1)
+    cfg = json.loads(block)
+    dirs = cfg.get("skills_dirs") or [cfg["skills_dir"]]
+    cfg["skills_dirs"] = [Path(d).expanduser() for d in dirs]
+    cfg["log_dir"] = Path(cfg.get("log_dir", "~/workspace/learning-log")).expanduser()
+    return cfg
+
+
+def norm(name):
+    for prefix in ("local-", "local_"):
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit('usage: record-learning <skill-name> "<learning>"')
+    skill, text = sys.argv[1], sys.argv[2]
+    cfg = load_config()
+    date = datetime.now(ZoneInfo(cfg["timezone"])).strftime("%Y-%m-%d")
+    if norm(skill) == "cross-skill":
+        tag = "cross-skill"
+    else:
+        target = None
+        for base in cfg["skills_dirs"]:
+            if not base.is_dir():
+                continue
+            for sub in sorted(base.iterdir()):
+                if sub.is_dir() and (sub.name == skill or norm(sub.name) == norm(skill)):
+                    target = sub
+                    break
+            if target is not None:
+                break
+        if target is None:
+            sys.exit(f"no such skill: {skill}")
+        tag = norm(target.name)
+    cfg["log_dir"].mkdir(parents=True, exist_ok=True)
+    log = cfg["log_dir"] / "learnings.md"
+    if not log.exists():
+        log.write_text(
+            "# Learnings\n\nPending learnings for the nightly sweep, "
+            "one line each, tagged with the skill they belong to. "
+            "Whoever implements an entry removes its line; the change "
+            "itself is recorded in the skill repo's history.\n\n## Pending\n"
+        )
+    with log.open("a") as f:
+        f.write(f"- [{date}] [{tag}] {text}\n")
+    print(f"recorded: {log}")
+
+
+if __name__ == "__main__":
+    main()

@@ -39,12 +39,12 @@ widget HTML shell; the agent presents it with `widget.create`.
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning mermaid "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning mermaid "<learning>"`.
 
 ## Dependencies
 
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop
 ## Available connectors
 
 Use `muse.connector_search` to find the current connector docs before following
