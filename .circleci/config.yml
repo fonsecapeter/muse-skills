@@ -1,0 +1,21 @@
+version: 2.1
+
+jobs:
+  build-and-test:
+    docker:
+      - image: cimg/python:3.13
+    steps:
+      - checkout
+      - run:
+          name: test
+          command: bin/test
+      - run:
+          name: link smoke test
+          command: |
+            bin/link-skills --dest /tmp/live-tree
+            bin/verify --dest /tmp/live-tree
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
