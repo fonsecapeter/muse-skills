@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Link the skills listed in manifest.json into a destination folder.
+
+Skills live nested in bucket folders in this repo and flat in the
+destination (default ~/workspace/custom-skills). This script is the
+only thing that creates those links, and it links exactly what the
+manifest lists.
+
+Usage:
+    bin/link-skills [--check] [--repo PATH] [--dest PATH]
+                    [--manifest PATH]
+
+--check reports drift and changes nothing. Without it, missing
+links are created and links pointing at the wrong source are
+repaired. A real file or directory sitting where a link belongs is
+never replaced: the run fails before changing anything.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+class LinkSkillsError(Exception):
+    """Linking cannot proceed without risking the destination."""
+
+
+@dataclass(frozen=True)
+class RosterEntry:
+    name: str
+    bucket: str
+
+
+@dataclass(frozen=True)
+class Link:
+    source: Path
+    target: Path
+
+
+def load_roster(manifest_path: Path) -> list[RosterEntry]:
+    try:
+        data = json.loads(manifest_path.read_text())
+        entries = [
+            RosterEntry(name=item["name"], bucket=item["bucket"])
+            for item in data["skills"]
+        ]
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        raise LinkSkillsError(
+            f"cannot read roster from {manifest_path}: {err}"
+        ) from err
+    names = [entry.name for entry in entries]
+    if len(names) != len(set(names)):
+        raise LinkSkillsError("manifest lists a skill name twice")
+    return entries
+
+
+def expected_links(roster: list[RosterEntry], repo: Path, dest: Path) -> list[Link]:
+    return [
+        Link(source=repo / entry.bucket / entry.name, target=dest / entry.name)
+        for entry in roster
+    ]
+
+
+def link_state(link: Link) -> str:
+    """One of: ok, missing, wrong-target, blocked, no-source."""
+    if not link.source.is_dir():
+        return "no-source"
+    if link.target.is_symlink():
+        return "ok" if link.target.readlink() == link.source else "wrong-target"
+    if link.target.exists():
+        return "blocked"
+    return "missing"
+
+
+def describe(link: Link, state: str) -> str:
+    name = link.target.name
+    if state == "ok":
+        return f"ok {name}"
+    if state == "missing":
+        return f"missing link: {link.target}"
+    if state == "wrong-target":
+        return f"wrong target: {link.target} -> {link.target.readlink()}"
+    if state == "blocked":
+        return f"blocked: {link.target} exists and is not a symlink"
+    return f"no source: {link.source} is not a directory in the repo"
+
+
+def check(links: list[Link]) -> list[str]:
+    return [
+        describe(link, state)
+        for link in links
+        if (state := link_state(link)) != "ok"
+    ]
+
+
+def apply(links: list[Link]) -> list[str]:
+    states = {link: link_state(link) for link in links}
+    fatal = [
+        describe(link, state)
+        for link, state in states.items()
+        if state in ("blocked", "no-source")
+    ]
+    if fatal:
+        raise LinkSkillsError("\n".join(fatal))
+    actions = []
+    for link, state in states.items():
+        if state == "ok":
+            actions.append(describe(link, state))
+        elif state == "missing":
+            link.target.symlink_to(link.source)
+            actions.append(f"linked {link.target.name} -> {link.source}")
+        elif state == "wrong-target":
+            link.target.unlink()
+            link.target.symlink_to(link.source)
+            actions.append(f"relinked {link.target.name} -> {link.source}")
+    return actions
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Link the manifest's skills into the destination folder."
+    )
+    parser.add_argument("--check", action="store_true",
+                        help="report drift only; change nothing")
+    parser.add_argument("--repo", type=Path,
+                        default=Path(__file__).resolve().parent.parent,
+                        help="repo root (default: this script's repo)")
+    parser.add_argument("--dest", type=Path,
+                        default=Path.home() / "workspace" / "custom-skills",
+                        help="destination folder (default: ~/workspace/custom-skills)")
+    parser.add_argument("--manifest", type=Path, default=None,
+                        help="manifest path (default: <repo>/manifest.json)")
+    args = parser.parse_args(argv)
+
+    repo = args.repo.resolve()
+    dest = args.dest.expanduser().resolve()
+    manifest = args.manifest or repo / "manifest.json"
+    try:
+        links = expected_links(load_roster(manifest), repo, dest)
+        if args.check:
+            problems = check(links)
+            for problem in problems:
+                print(problem)
+            if not problems:
+                print(f"all {len(links)} roster links ok in {dest}")
+            return 1 if problems else 0
+        dest.mkdir(parents=True, exist_ok=True)
+        for action in apply(links):
+            print(action)
+        return 0
+    except LinkSkillsError as err:
+        print(f"link-skills: {err}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
