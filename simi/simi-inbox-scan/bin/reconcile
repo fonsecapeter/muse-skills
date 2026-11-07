@@ -1,0 +1,414 @@
+#!/usr/bin/env python3
+# bin/reconcile — three-way reconciliation of Gmail, Drive, and the
+# spreadsheet, then content-level verification. Idempotent; safe to
+# rerun any time the piles look off.
+#
+# Phase 1 — reconcile. Enumerate invoice attachments across ALL Mission
+#   Pet Hospital emails. Build exact indexes from Drive PDF *contents*
+#   (invoice number and date+total per file, both folders) and from the
+#   spreadsheet. For each Gmail invoice:
+#     in Drive and in Sheet  -> captured, skip
+#     in neither             -> line up (upload to invoices/todo folder +
+#                               todo row, atomic per invoice: both
+#                               writes verified before moving on)
+#     in Drive, not in Sheet -> heal: log the missing row
+#     in Sheet, not in Drive -> heal: upload the missing PDF
+#     extraction failed      -> needs_review
+#   A half-finished invoice is never marked captured, so an interrupted
+#   run resumes cleanly — at worst one invoice is retried.
+#
+# Phase 2 — verify (fresh reads, ETL-style). For every PDF in the
+#   todo folder: download, extract, and check the extracted date
+#   matches the filename, a spreadsheet row exists, invoice numbers and
+#   byte hashes are unique (two invoices on the same day are fine when
+#   numbers/amounts differ). Every todo row must pair to a file.
+#   Safe problems are healed (missing row logged, misnamed file renamed);
+#   the rest is reported. The processed folder is scanned for duplicate
+#   invoice numbers too.
+#
+# Idempotent: reruns find nothing new.
+# Usage: bin/reconcile
+import json, os, re, hashlib, base64, subprocess, tempfile
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cfg = json.loads(re.search(r'```json\n(.*?)```',
+    open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+CLAIMS = os.path.expanduser("~/workspace/custom-skills/simi-claims")
+WORK = os.path.expanduser("~/workspace/simi-claims/work")
+STATE = os.path.expanduser(cfg["state_file"])
+TODO_FOLDER = cfg["unprocessed_folder_id"]
+os.makedirs(WORK, exist_ok=True)
+
+state = {"seen_message_ids": [], "stored_sha256s": []}
+if os.path.exists(STATE):
+    state = json.load(open(STATE))
+seen, stored = set(state["seen_message_ids"]), set(state["stored_sha256s"])
+
+def gws(*args):
+    return subprocess.run(["hatch_gws_cli"] + list(args),
+                          capture_output=True, text=True)
+
+def gws_out(*args):
+    return gws(*args).stdout
+
+def gmail_list_all(q):
+    msgs, token = [], None
+    while True:
+        p = {"userId": "me", "q": q, "maxResults": 100}
+        if token:
+            p["pageToken"] = token
+        d = json.loads(gws_out("gmail", "users", "messages", "list",
+                               "--params", json.dumps(p)))
+        msgs.extend(d.get("messages", []))
+        token = d.get("nextPageToken")
+        if not token:
+            return msgs
+
+def gmail_get(mid):
+    return json.loads(gws_out("gmail", "users", "messages", "get",
+        "--params", json.dumps({"userId": "me", "id": mid, "format": "full"})))
+
+def attachments(msg):
+    found = []
+    def walk(parts):
+        for p in parts or []:
+            if p.get("filename") and p.get("body", {}).get("attachmentId"):
+                found.append((p["filename"], p["body"]["attachmentId"]))
+            walk(p.get("parts"))
+    walk(msg.get("payload", {}).get("parts"))
+    return found
+
+def download(mid, att_id):
+    out = gws_out("gmail", "users", "messages", "attachments", "get",
+        "--params", json.dumps({"userId": "me", "messageId": mid,
+                                "id": att_id}))
+    data = json.loads(out)["data"].replace("-", "+").replace("_", "/")
+    data += "=" * (-len(data) % 4)
+    return base64.b64decode(data)
+
+def cli(script, *args):
+    r = subprocess.run([os.path.join(CLAIMS, "bin", script), *args],
+                       capture_output=True, text=True)
+    return r.returncode == 0, r.stdout
+
+def drive_list(folder_id):
+    try:
+        return json.loads(gws_out("drive", "files", "list", "--params",
+            json.dumps({"q": "'%s' in parents and trashed=false" % folder_id,
+                        "pageSize": 200, "fields": "files(id,name)"})
+            )).get("files", [])
+    except Exception:
+        return []
+
+def drive_download(file_id, dest):
+    r = gws("drive", "files", "get", "--params",
+            json.dumps({"fileId": file_id, "alt": "media"}),
+            "--output", dest)
+    return r.returncode == 0 and os.path.exists(dest)
+
+def drive_rename(file_id, new_name):
+    r = gws("drive", "files", "update", "--params",
+            json.dumps({"fileId": file_id}),
+            "--json", json.dumps({"name": new_name}))
+    return r.returncode == 0
+
+def extract(pdf_path):
+    try:
+        ok, out = cli("extract-invoice", pdf_path)
+        if not ok:
+            return None
+        return json.loads(out)
+    except Exception:
+        return None
+
+def sheet_rows():
+    try:
+        return json.loads(gws_out("sheets", "spreadsheets", "values", "get",
+            "--params", json.dumps({"spreadsheetId": scfg["spreadsheet_id"],
+                "range": "%s!B:K" % scfg["spreadsheet_tab"]}))
+            ).get("values", [])
+    except Exception:
+        return []
+
+def norm_total(t):
+    return re.sub(r"[$,]", "", t or "").strip()
+
+def iso_of(date):
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", date or "")
+    return ("%s-%s-%s" % (m.group(3), m.group(1).zfill(2),
+            m.group(2).zfill(2))) if m else ""
+
+def dated_name(date, num=None):
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", date or "")
+    if not m:
+        base = "invoice_undated"
+    else:
+        base = "invoice_%s_%s_%s" % (m.group(3), m.group(1).zfill(2),
+                                    m.group(2).zfill(2))
+    return "%s_%s.pdf" % (base, num) if num else base + ".pdf"
+
+def what_of(info):
+    items = [i["description"] for i in (info or {}).get("line_items", [])][:3]
+    return ", ".join(items)[:80] or "vet invoice"
+
+scfg = json.loads(re.search(r'```json\n(.*?)```',
+    open(os.path.join(CLAIMS, "config.md")).read(), re.S).group(1))
+PROCESSED = scfg["drive_folder_id"]
+
+def build_drive_index(folder_id):
+    """Exact content index: invoice number -> file, (date,total) -> file."""
+    idx = {"by_num": {}, "by_dt": {}, "files": []}
+    for f in drive_list(folder_id):
+        name = f["name"]
+        if name.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
+            idx["files"].append({"name": name, "id": f["id"],
+                                 "skipped": "not a pdf"})
+            continue
+        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False).name
+        info = None
+        if drive_download(f["id"], tmp):
+            raw = open(tmp, "rb").read()
+            info = extract(tmp)
+            entry = {"name": name, "id": f["id"],
+                     "sha256": hashlib.sha256(raw).hexdigest()}
+            if info:
+                entry.update({"num": info.get("invoice_number"),
+                              "date": info.get("date"),
+                              "total": info.get("total")})
+                if info.get("invoice_number"):
+                    idx["by_num"][info["invoice_number"]] = entry
+                iso = iso_of(info.get("date"))
+                if iso and info.get("total"):
+                    idx["by_dt"][(iso, norm_total(info["total"]))] = entry
+            else:
+                entry["skipped"] = "extraction failed"
+            idx["files"].append(entry)
+        else:
+            idx["files"].append({"name": name, "id": f["id"],
+                                 "skipped": "download failed"})
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+    return idx
+
+def build_sheet_index():
+    idx = {"by_num": {}, "by_dt": {}, "rows": []}
+    for r in sheet_rows():
+        if len(r) < 5:
+            continue
+        entry = {"date": r[2].strip() if len(r) > 2 and r[2] else "",
+                 "total": norm_total(r[5]) if len(r) > 5 else "",
+                 "status": r[4].strip() if len(r) > 4 else "",
+                 "what": r[8] if len(r) > 8 else ""}
+        num = r[0].strip() if r[0] else ""
+        if num:
+            entry["num"] = num
+            idx["by_num"][num] = entry
+        if entry["date"] and entry["total"]:
+            idx["by_dt"][(entry["date"], entry["total"])] = entry
+        idx["rows"].append(entry)
+    return idx
+
+def in_drive(info, didx):
+    num = (info or {}).get("invoice_number")
+    if num and num in didx["by_num"]:
+        return True
+    iso, total = iso_of((info or {}).get("date")), norm_total((info or {}).get("total"))
+    return bool(iso and total and (iso, total) in didx["by_dt"])
+
+def in_sheet(info, sidx):
+    num = (info or {}).get("invoice_number")
+    if num and num in sidx["by_num"]:
+        return True
+    iso, total = iso_of((info or {}).get("date")), norm_total((info or {}).get("total"))
+    return bool(iso and total and (iso, total) in sidx["by_dt"])
+
+def log_row(info, name_hint=""):
+    num = info.get("invoice_number") or ""
+    iso = iso_of(info.get("date"))
+    ok, out = cli("log-claim", "--date", iso, "--location", "MPH",
+                  "--cost", info.get("total") or "0", "--status", "todo",
+                  "--what", what_of(info), "--invoice-id", num)
+    return ok and "row appended:" in out, out.strip().splitlines()[-1] if out.strip() else ""
+
+def upload_pdf(local_path, dest_name, folder=TODO_FOLDER):
+    ok, out = cli("upload-invoice", local_path, dest_name,
+                  "--folder", folder)
+    return ok and "uploaded:" in out, out.strip().splitlines()[-1] if out.strip() else ""
+
+report = {"phase1": {"lined_up": [], "healed_rows": [], "healed_uploads": [],
+                     "captured": 0, "needs_review": [], "incomplete": [],
+                     "duplicates_skipped": 0},
+          "phase2": {"verified": 0, "date_mismatches_fixed": [],
+                     "rows_healed": [], "rows_without_files": [],
+                     "duplicate_numbers": [], "duplicate_bytes": [],
+                     "processed_dupes": []},
+          "messages_scanned": 0}
+
+# ---------------- Phase 1: reconcile ----------------
+didx_un = build_drive_index(TODO_FOLDER)
+didx_pr = build_drive_index(PROCESSED)
+sidx = build_sheet_index()
+# merged drive view: an invoice is "in drive" if in any of the folders
+didx_all = {"by_num": {**didx_pr["by_num"], **didx_un["by_num"]},
+            "by_dt": {**didx_pr["by_dt"], **didx_un["by_dt"]}}
+
+inc = cfg.get("filename_include", [])
+exc = cfg.get("filename_exclude", [])
+hash_seen_run = {}
+for m in gmail_list_all(cfg["gmail_query"]):
+    mid = m["id"]
+    report["messages_scanned"] += 1
+    seen.add(mid)
+    for fname, att_id in attachments(gmail_get(mid)):
+        low = fname.lower()
+        if not any(p in low for p in inc) or any(p in low for p in exc):
+            continue
+        raw = download(mid, att_id)
+        h = hashlib.sha256(raw).hexdigest()
+        if h in hash_seen_run:
+            report["phase1"]["duplicates_skipped"] += 1
+            continue
+        hash_seen_run[h] = fname
+        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False).name
+        open(tmp, "wb").write(raw)
+        info = extract(tmp)
+        if not info or not info.get("date") or not info.get("total"):
+            report["phase1"]["needs_review"].append(
+                {"file": fname, "message_id": mid,
+                 "note": "extraction incomplete — not staged"})
+            os.unlink(tmp)
+            continue
+        num = info.get("invoice_number") or ""
+        iso = iso_of(info.get("date"))
+        has_file = in_drive(info, didx_all)
+        has_row = in_sheet(info, sidx)
+        if has_file and has_row:
+            report["phase1"]["captured"] += 1
+            stored.add(h)
+            os.unlink(tmp)
+            continue
+        name = dated_name(info.get("date"), num)
+        # atomic line-up (or heal): both writes verified before moving on
+        if not has_file:
+            backup = os.path.join(WORK, name)
+            open(backup, "wb").write(raw)
+            # Heal-uploads land where the row's status says the PDF
+            # belongs: filed claims (submitted/processed) go to the
+            # processed folder, never back into todo. (A stale folder
+            # pointer once hid the processed copies, and this heal
+            # re-uploaded them into todo as duplicates.)
+            dest = TODO_FOLDER
+            if has_row:
+                row = sidx["by_num"].get(num) or sidx["by_dt"].get(
+                    (iso, norm_total(info.get("total")))) or {}
+                if row.get("status") in ("submitted", "processed"):
+                    dest = PROCESSED
+            ok_up, up_out = upload_pdf(backup, name, dest)
+        else:
+            ok_up, up_out = True, "already in drive"
+        if ok_up and not has_row:
+            ok_log, log_out = log_row(info)
+        elif has_row:
+            ok_log, log_out = True, "row already present"
+        else:
+            ok_log, log_out = False, "upload failed, row not attempted"
+        os.unlink(tmp)
+        if ok_up and ok_log:
+            stored.add(h)
+            if num:
+                sidx["by_num"][num] = {"date": iso,
+                    "total": norm_total(info.get("total")), "status": "todo"}
+                didx_all["by_num"][num] = {"name": name}
+            if iso:
+                sidx["by_dt"][(iso, norm_total(info.get("total")))] = True
+                didx_all["by_dt"][(iso, norm_total(info.get("total")))] = True
+            entry = {"file": name, "invoice_number": num,
+                     "date": info.get("date"), "total": info.get("total"),
+                     "items": what_of(info)}
+            if not has_file and not has_row:
+                report["phase1"]["lined_up"].append(entry)
+            elif not has_row:
+                report["phase1"]["healed_rows"].append(entry)
+            else:
+                report["phase1"]["healed_uploads"].append(entry)
+        else:
+            report["phase1"]["incomplete"].append(
+                {"file": fname, "invoice_number": num,
+                 "upload_ok": ok_up, "log_ok": ok_log,
+                 "detail": "%s / %s" % (up_out, log_out)})
+
+# ---------------- Phase 2: verify (fresh reads) ----------------
+vdidx = build_drive_index(TODO_FOLDER)
+vsidx = build_sheet_index()
+vfiles = [f for f in vdidx["files"] if not f.get("skipped")]
+seen_nums, seen_hashes = {}, {}
+for f in vfiles:
+    report["phase2"]["verified"] += 1
+    # date in filename matches extracted date?
+    fiso = iso_of(f.get("date"))
+    m = re.search(r"invoice_(\d{4})_(\d{2})_(\d{2})", f["name"])
+    niso = "%s-%s-%s" % m.groups() if m else ""
+    if niso and fiso and niso != fiso and f.get("num"):
+        new_name = dated_name(f["date"], f["num"])
+        if drive_rename(f["id"], new_name):
+            report["phase2"]["date_mismatches_fixed"].append(
+                {"old": f["name"], "new": new_name})
+            f["name"] = new_name
+    # row exists?
+    num = f.get("num") or ""
+    has_row = (num and num in vsidx["by_num"]) or (
+        fiso and (fiso, norm_total(f.get("total"))) in vsidx["by_dt"])
+    if not has_row and fiso and f.get("total"):
+        ok_log, log_out = log_row({"invoice_number": num, "date": f["date"],
+            "total": f["total"], "line_items": []})
+        if ok_log:
+            report["phase2"]["rows_healed"].append(f["name"])
+            if num:
+                vsidx["by_num"][num] = True
+            vsidx["by_dt"][(fiso, norm_total(f["total"]))] = True
+    # uniqueness
+    if num:
+        seen_nums.setdefault(num, []).append(f["name"])
+    if f.get("sha256"):
+        seen_hashes.setdefault(f["sha256"], []).append(f["name"])
+report["phase2"]["duplicate_numbers"] = [
+    {"invoice_number": n, "files": fs} for n, fs in seen_nums.items()
+    if len(fs) > 1]
+report["phase2"]["duplicate_bytes"] = [
+    {"files": fs} for fs in seen_hashes.values() if len(fs) > 1]
+# every todo row pairs to a file
+vnum_to_file = {f["num"]: f["name"] for f in vfiles if f.get("num")}
+vdt_to_file = {}
+for f in vfiles:
+    fiso = iso_of(f.get("date"))
+    if fiso and f.get("total"):
+        vdt_to_file[(fiso, norm_total(f["total"]))] = f["name"]
+for r in vsidx["rows"]:
+    if r.get("status") != "todo":
+        continue
+    paired = (r.get("num") and r["num"] in vnum_to_file) or (
+        r.get("date") and r.get("total") and
+        (r["date"], r["total"]) in vdt_to_file)
+    if not paired:
+        report["phase2"]["rows_without_files"].append(r)
+# processed folder: duplicate invoice numbers (within or vs todo).
+# Fresh read, not the phase-1 index: phase 1 may have just healed an
+# upload into processed, and the verification must see it.
+vdidx_pr = build_drive_index(PROCESSED)
+pnums = {}
+for f in vdidx_pr["files"]:
+    if f.get("num"):
+        pnums.setdefault(f["num"], []).append("processed/" + f["name"])
+for n, fs in seen_nums.items():
+    if n in pnums:
+        pnums[n].extend("todo/" + x for x in fs)
+report["phase2"]["processed_dupes"] = [
+    {"invoice_number": n, "files": fs} for n, fs in pnums.items()
+    if len(fs) > 1]
+
+state["seen_message_ids"] = sorted(seen)
+state["stored_sha256s"] = sorted(stored)
+json.dump(state, open(STATE, "w"), indent=2)
+print(json.dumps(report, indent=2))
