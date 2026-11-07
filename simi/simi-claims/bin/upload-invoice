@@ -1,0 +1,40 @@
+#!/bin/bash
+# upload-invoice <local_pdf> <dest_name> [--folder <folder_id>] — upload a
+# renamed invoice PDF into a Drive folder (default: the simi-claims
+# drive_folder_id, i.e. the processed folder; pass --folder to override,
+# e.g. the unprocessed folder). Prints the uploaded file's name and link.
+set -euo pipefail
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export SKILL_DIR PDF="$1" DEST="$2" FOLDER=""
+if [ "${3:-}" = "--folder" ] && [ -n "${4:-}" ]; then FOLDER="$4"; fi
+python3 <<'EOF'
+import json, os, re, subprocess, sys
+cfg = open(os.path.join(os.environ["SKILL_DIR"], "config.md")).read()
+pdf, dest = os.environ["PDF"], os.environ["DEST"]
+folder_id = os.environ.get("FOLDER") or json.loads(
+    re.search(r'```json\n(.*?)```', cfg, re.S).group(1))["drive_folder_id"]
+assert os.path.isfile(pdf), "no such file: %s" % pdf
+assert pdf.startswith("/"), "upload path must be absolute: %s" % pdf
+raw = subprocess.run(
+    ["hatch_gws_cli", "drive", "files", "create",
+     "--upload", pdf],
+    capture_output=True, text=True)
+try:
+    d = json.loads(raw.stdout)
+    fid = d.get("id")
+    if raw.returncode != 0 or not fid:
+        raise ValueError("upload failed: %s" % raw.stdout[:300])
+    # files create ignores name/parent metadata -> set them with update
+    r2 = subprocess.run(
+        ["hatch_gws_cli", "drive", "files", "update", "--params",
+         json.dumps({"fileId": fid, "addParents": folder_id}),
+         "--json", json.dumps({"name": dest})],
+        capture_output=True, text=True)
+    d2 = json.loads(r2.stdout)
+    if r2.returncode != 0 or d2.get("name") != dest:
+        raise ValueError("rename/move failed: %s" % r2.stdout[:300])
+    print("uploaded:", d2.get("name"), "| id:", fid)
+except Exception as e:
+    print("UPLOAD FAILED:", e, file=sys.stderr)
+    raise SystemExit(1)
+EOF

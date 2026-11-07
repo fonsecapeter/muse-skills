@@ -35,6 +35,14 @@
       "name": "sweep-learnings",
       "bucket": "studio",
       "path": "studio/learning/sweep-learnings"
+    },
+    {
+      "name": "simi-claims",
+      "bucket": "simi"
+    },
+    {
+      "name": "simi-inbox-scan",
+      "bucket": "simi"
     }
   ]
 }
