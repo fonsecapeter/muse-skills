@@ -1,0 +1,113 @@
+                                                                                                                                  INVOICE
+
+
+
+
+                                                                                                       FOR
+
+                                                                                                       Sample Client
+                                                                                                       1 Sample Street
+                                                                                                       Sample City, CA 00000
+DUE        INVOICE #               DATE                      TERMS
+
+4/1/2024   296943                  04/01/2024                Due upon receipt
+
+
+
+
+PATIENT                DESCRIPTION OF CHARGES                                                          QUANTITY                         AMOUNT
+
+Simi                   Dental Nursing Group                                                                     1
+
+Simi                   Dental Nursing Group                                                                     1                            0.00
+
+Simi                   Anesthesia Group (Isoflurane first 30 minutes including induction)                       1
+
+Simi                   Pre-Anesthetic Physical Exam                                                             1
+
+Simi                   IV catheter - peripheral                                                                 1
+
+Simi                   LRS 1 liter bag                                                                          1
+
+Simi                   EKG/Pulse Oximeter/Blood Pressure Monitoring                                             1
+
+Simi                   Hospitalization for the day                                                              1
+
+Simi                   M Supervision level 2 (0-4 inj/day)                                                      1
+
+Simi                   Morphine injection 10mg/ml 1 ml                                                       0.69 ml
+
+Simi                   Diazepam injection 5 mg/ml 10 ml (PER ML)                                             0.46 ml
+
+Simi                   Alfaxan 10mg/ml 20ml                                                                   2.3 ml
+
+Simi                   Cerenia Injectable 10 mg/ml 20 ml (PER ML)                                             1.1 ml
+
+Simi                   Methadone 10 mg/ml 20 ml (PER ML)                                                     0.23 ml
+
+Simi                   Group Discount 100%
+
+Simi                   Dental Inhalant An - first 1/2 hour                                                      1
+
+Simi                   Anesthesia Group (Isoflurane first 30 minutes including induction)                       1                         540.00
+
+Simi                   CARPROFEN ("Rimadyl") 25 mg chewable tablet (PER PILL)                                  10 tab                      43.40
+
+Simi                   Gabapentin CAPSULES 100 mg                                                              12 cap                      28.88
+
+Simi                   Dental Level 2 (few simple non-sx ext, no flaps, rads incl)                              1
+
+Simi                   Full Mouth Radiographs                                                                   1
+
+Simi                   D Ultrasonic scale & polish K9                                                           1
+
+Simi                   IV fluids per day                                                                        1
+
+Simi                   Group Discount 100%
+
+Simi                   ADDITIONAL anesthesia Per 1/2 hour                                                       0
+
+Simi                   Dental Level 2                                                                           1
+
+Simi                   Dental Level 2 (few simple non-sx ext, no flaps, rads incl)                              1                        1,085.00
+
+Simi                   Dental Anesthesia expanded per 30 minutes                                                2                         680.00
+
+
+
+                       Sales tax                                                                                                             0.00
+
+                       PATIENT SUBTOTALS                                                    INVOICE TOTAL                               $2,377.28
+                  Simi                                 $2,377.28                            PAYMENT - VISA                        2,377.28
+                                                                                            APPLIED TO INVOICE                    2,377.28
+                                                                                            APPLIED FROM ACCOUNT                     0.00
+                                                                                            CREDIT APPLIED TO ACCOUNT                0.00
+                                                                                            CHANGE DUE                               0.00
+
+                                                                                            RUNNING BALANCE                       $0.00
+                NOTES
+
+                Medication Guide Given
+
+
+
+                An E-Collar is routinely recommended after a surgical procedure to prevent your pet from licking and chewing at
+                surgery site.
+                Medication Guide Given
+
+
+
+
+IF your pet had lab tests done today we will call you within 1-5 business days. If you have
+not heard from us in that time frame, please give us a call at 415-552-1969
+
+
+
+                                                                                             Would you like to have your
+                                                                                             pet's medication shipped to
+                                                                                             you? Just scan the QR code
+                                                                                             at check out and they'll be
+                                                                                             headed your way without
+                                                                                             having to worry about
+                                                                                             parking!
+

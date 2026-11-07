@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+# scan-inbox — watch Gmail for Mission Pet Hospital invoices and line them
+# up for Peter: dedupe (idempotent), upload each new invoice PDF to the
+# Drive "invoices/todo" folder as invoice_yyyy_mm_dd_<invoice_id>.pdf,
+# and log a todo row in the spreadsheet. Peter files on Nationwide
+# himself; Tony then marks the row submitted and moves the PDF to
+# "invoices/processed", closing it as processed when the check lands.
+# Prints a JSON report.
+# Usage: bin/scan-inbox
+import json, os, re, sys, hashlib, base64, subprocess, tempfile
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cfg = json.loads(re.search(r'```json\n(.*?)```',
+    open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+CLAIMS = os.path.expanduser("~/workspace/custom-skills/simi-claims")
+WORK = os.path.expanduser("~/workspace/simi-claims/work")
+STATE = os.path.expanduser(cfg["state_file"])
+os.makedirs(WORK, exist_ok=True)
+
+state = {"seen_message_ids": [], "stored_sha256s": []}
+if os.path.exists(STATE):
+    state = json.load(open(STATE))
+seen, stored = set(state["seen_message_ids"]), set(state["stored_sha256s"])
+
+def gws(*args):
+    return subprocess.run(["hatch_gws_cli"] + list(args),
+                          capture_output=True, text=True).stdout
+
+def gmail_list(q, max_n):
+    out = gws("gmail", "users", "messages", "list", "--params",
+              json.dumps({"userId": "me", "q": q, "maxResults": max_n}))
+    try:
+        return json.loads(out).get("messages", [])
+    except Exception:
+        return []
+
+def gmail_get(mid):
+    out = gws("gmail", "users", "messages", "get", "--params",
+              json.dumps({"userId": "me", "id": mid, "format": "full"}))
+    return json.loads(out)
+
+def attachments(msg):
+    found = []
+    def walk(parts):
+        for p in parts or []:
+            if p.get("filename") and p.get("body", {}).get("attachmentId"):
+                found.append((p["filename"], p["body"]["attachmentId"]))
+            walk(p.get("parts"))
+    walk(msg.get("payload", {}).get("parts"))
+    return found
+
+def download(mid, att_id):
+    out = gws("gmail", "users", "messages", "attachments", "get", "--params",
+              json.dumps({"userId": "me", "messageId": mid, "id": att_id}))
+    data = json.loads(out)["data"].replace("-", "+").replace("_", "/")
+    data += "=" * (-len(data) % 4)
+    return base64.b64decode(data)
+
+def cli(script, *args):
+    return subprocess.run([os.path.join(CLAIMS, "bin", script), *args],
+                          capture_output=True, text=True).stdout
+
+# ---- idempotency snapshots: what's already captured ----
+scfg = json.loads(re.search(r'```json\n(.*?)```',
+    open(os.path.join(CLAIMS, "config.md")).read(), re.S).group(1))
+captured_numbers, captured_datetotals = set(), set()
+try:
+    rows = json.loads(gws("sheets", "spreadsheets", "values", "get", "--params",
+        json.dumps({"spreadsheetId": scfg["spreadsheet_id"],
+                    "range": "%s!B:K" % scfg["spreadsheet_tab"]}))
+        ).get("values", [])
+    for r in rows:
+        if r and r[0].strip():
+            captured_numbers.add(r[0].strip())
+            if r[0] and len(r) > 2 and r[2]:
+                captured_datetotals.add(
+                    (r[0].strip(), re.sub(r"[$,]", "", r[2].strip())))
+except Exception:
+    pass
+
+drive_names = set()
+for fid in (cfg["unprocessed_folder_id"], scfg["drive_folder_id"]):
+    if not fid:
+        continue
+    try:
+        files = json.loads(gws("drive", "files", "list", "--params",
+            json.dumps({"q": "'%s' in parents and trashed=false" % fid,
+                        "pageSize": 100, "fields": "files(name)"})
+            )).get("files", [])
+        drive_names.update(f["name"] for f in files)
+    except Exception:
+        pass
+
+report = {"lined_up": [], "already_captured": [], "duplicates_skipped": 0,
+          "filtered_out": [], "messages_scanned": 0}
+for m in gmail_list(cfg["gmail_query"], cfg["max_results"]):
+    mid = m["id"]
+    report["messages_scanned"] += 1
+    if mid in seen:
+        continue
+    seen.add(mid)
+    for fname, att_id in attachments(gmail_get(mid)):
+        low = fname.lower()
+        inc = cfg.get("filename_include", [])
+        exc = cfg.get("filename_exclude", [])
+        if not any(p in low for p in inc) or any(p in low for p in exc):
+            report["filtered_out"].append(fname)
+            continue
+        raw = download(mid, att_id)
+        h = hashlib.sha256(raw).hexdigest()
+        if h in stored:
+            report["duplicates_skipped"] += 1
+            continue
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as t:
+            t.write(raw)
+            tmp = t.name
+        try:
+            info = json.loads(cli("extract-invoice", tmp))
+        except Exception:
+            info = {"invoice_number": None, "date": None, "total": None,
+                    "line_items": []}
+        num = info.get("invoice_number") or ""
+        date = info.get("date") or ""
+        total = info.get("total") or ""
+        dm = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", date)
+        iso = ("%s-%s-%s" % (dm.group(3), dm.group(1).zfill(2),
+               dm.group(2).zfill(2))) if dm else ""
+        base = ("invoice_%s_%s_%s" % (dm.group(3), dm.group(1).zfill(2),
+                dm.group(2).zfill(2)) if dm else "invoice_undated")
+        candidates = [base + ".pdf"]
+        if num:
+            candidates.append("%s_%s.pdf" % (base, num))
+        # captured = invoice content known in Drive AND spreadsheet.
+        # The spreadsheet is the source of truth: a row alone means Peter
+        # has it handled (filenames vary, e.g. invoice_mph_2025-09-24.pdf),
+        # so never re-upload on a row match — that would dupe.
+        has_row = (num and num in captured_numbers) or (
+            iso and total and
+            (iso, re.sub(r"[$,]", "", total)) in captured_datetotals)
+        has_file = any(c in drive_names for c in candidates)
+        if has_row:
+            report["already_captured"].append({"file": candidates[0],
+                "invoice_number": num, "reason": "in spreadsheet"})
+            stored.add(h)
+            os.unlink(tmp)
+            continue
+        if has_file and not has_row:
+            # heal: file staged but row missing — log it from this extraction
+            items = [i["description"] for i in info.get("line_items", [])][:3]
+            what = ", ".join(items)[:80] or "vet invoice"
+            if dm:
+                log = cli("log-claim", "--date", iso, "--location", "MPH",
+                          "--cost", total or "0", "--status", "todo",
+                          "--what", what, "--invoice-id", num)
+                report["lined_up"].append({"file": candidates[0],
+                    "invoice_number": num, "date": date, "total": total,
+                    "healed": "row",
+                    "log": log.strip().splitlines()[-1] if log.strip()
+                    else ""})
+                if num:
+                    captured_numbers.add(num)
+                if iso and total:
+                    captured_datetotals.add(
+                        (iso, re.sub(r"[$,]", "", total)))
+            stored.add(h)
+            os.unlink(tmp)
+            continue
+        # line it up: dated name -> invoices/todo Drive folder + todo row.
+        # Atomic per invoice: both writes verified before moving on; a
+        # half-done invoice stays unmarked and is retried next run.
+        # (has_file was false, so candidates[0] is free.)
+        name = candidates[1] if num else candidates[0]
+        backup = os.path.join(WORK, name)
+        open(backup, "wb").write(raw)
+        up = cli("upload-invoice", backup, name,
+                 "--folder", cfg["unprocessed_folder_id"])
+        up_ok = "uploaded:" in up
+        items = [i["description"] for i in info.get("line_items", [])][:3]
+        what = ", ".join(items)[:80] or "vet invoice"
+        log_out, log_ok = "", False
+        if dm and up_ok:
+            log = cli("log-claim", "--date", iso, "--location", "MPH",
+                      "--cost", total or "0", "--status", "todo",
+                      "--what", what, "--invoice-id", num)
+            log_out = log.strip().splitlines()[-1] if log.strip() else ""
+            log_ok = "row appended:" in log
+        elif not dm:
+            log_out = "skipped: no date extracted"
+        elif not up_ok:
+            log_out = "upload failed, row not attempted"
+        if up_ok and log_ok:
+            drive_names.add(name)
+            if num:
+                captured_numbers.add(num)
+            if iso and total:
+                captured_datetotals.add((iso, re.sub(r"[$,]", "", total)))
+            stored.add(h)
+            report["lined_up"].append({"file": name, "invoice_number": num,
+                                       "date": date, "total": total,
+                                       "upload": up.strip().splitlines()[-1]
+                                       if up.strip() else "",
+                                       "log": log_out})
+        else:
+            report.setdefault("incomplete", []).append(
+                {"file": candidates[0], "invoice_number": num,
+                 "upload_ok": up_ok, "log_ok": log_ok,
+                 "detail": "%s / %s" % (up.strip().splitlines()[-1]
+                                        if up.strip() else "", log_out)})
+        os.unlink(tmp)
+
+state["seen_message_ids"] = sorted(seen)
+state["stored_sha256s"] = sorted(stored)
+json.dump(state, open(STATE, "w"), indent=2)
+print(json.dumps(report, indent=2))

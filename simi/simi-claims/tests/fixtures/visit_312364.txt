@@ -1,0 +1,60 @@
+                                                                                                                                                INVOICE
+
+
+
+
+                                                                                                                     FOR
+
+                                                                                                                     Sample Client
+                                                                                                                     1 Sample Street
+                                                                                                                     Sample City, CA 00000
+DUE         INVOICE #                   DATE                   TERMS
+
+2/17/2025   312364                      02/17/2025             Due upon receipt
+
+
+
+
+PATIENT                   DESCRIPTION OF CHARGES                                                                     QUANTITY                         AMOUNT
+
+Simi                      Office Call                                                                                           1                      106.00
+
+Simi                      Ear Cleaning                                                                                          1                       48.00
+
+Simi                      Claro 30 day ear treatment                                                                            2 tube                 139.36
+
+Simi                      Bordetella Oral Vaccine                                                                               1                       50.00
+
+Simi                      Lepto Vaccine                                                                                         1                       50.00
+
+Simi                      Canine Influenza Vaccine                                                                              1                       50.00
+
+
+
+                          Sales tax                                                                                                                      0.00
+
+                          PATIENT SUBTOTALS                                                           INVOICE TOTAL                                   $443.36
+                          Simi                                    $443.36                             PAYMENT - VISA                                   443.36
+                                                                                                      APPLIED TO INVOICE                               443.36
+                                                                                                      APPLIED FROM ACCOUNT                               0.00
+                                                                                                      CREDIT APPLIED TO ACCOUNT                          0.00
+                                                                                                      CHANGE DUE                                         0.00
+
+                                                                                                      RUNNING BALANCE                                 $0.00
+                        NOTES
+
+                        It is common for pets to be tired, lethargic, or sore for 12-24 hours after receiving a vaccine. More serious vaccine
+                        reactions are uncommon; signs to watch for include swelling of the face or neck, difficulty breathing, a severe
+                        lethargy. Sometimes a serious reaction may begin with mild signs like hives, and progress to more serious
+                        symptoms. If you see these more serious signs, immediately contact or go to a veterinarian.
+                        It is common for pets to be tired, lethargic, or sore for 12-24 hours after receiving a vaccine. More serious vaccine
+                        reactions are uncommon; signs to watch for include swelling of the face or neck, difficulty breathing, a severe
+                        lethargy. Sometimes a serious reaction may begin with mild signs like hives, and progress to more serious
+                        symptoms. If you see these more serious signs, immediately contact or go to a veterinarian.
+                        It is common for pets to be tired, lethargic, or sore for 12-24 hours after receiving a vaccine. More serious vaccine
+                        reactions are uncommon; signs to watch for include swelling of the face or neck, difficulty breathing, a severe
+                        lethargy. Sometimes a serious reaction may begin with mild signs like hives, and progress to more serious
+                        symptoms. If you see these more serious signs, immediately contact or go to a veterinarian.
+                        Medication Guide Given
+Would you like to have your pet's medication shipped to you? Just scan the QR code!
+

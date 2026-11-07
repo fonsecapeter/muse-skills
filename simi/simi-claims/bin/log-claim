@@ -1,0 +1,68 @@
+#!/bin/bash
+# log-claim --date YYYY-MM-DD --location MPH --cost 885.22 --status todo \
+#           --what "cardiac ultrasound + bloodwork" --invoice-id 344309 \
+#           [--claim-id 2026012702810] [--submitted-date YYYY-MM-DD] \
+#           [--amount-paid 1460.00] \
+#           [--notes "..."]
+# Appends one tracking row to the spreadsheet (columns B..K, Peter's
+# order: invoice_id, claim_id, treatment_date, submitted_date, status,
+# cost, amount_paid, location, what, notes).
+# Default status is todo (invoice captured, not yet filed on Nationwide).
+# invoice_id is required for MPH rows; leave blank for other locations.
+# Args reach python via env (base64, newline-joined), never through backtick
+# command substitution — backtick nesting breaks on quoted values, so the
+# whole body is a single python heredoc with values passed as env vars.
+set -euo pipefail
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export SKILL_DIR
+RAW_ARGS=""
+for a in "$@"; do
+  RAW_ARGS="${RAW_ARGS}$(printf '%s' "$a" | base64 | tr -d '\n')"$'\n'
+done
+export RAW_ARGS
+python3 <<'EOF'
+import json, os, re, base64, subprocess, sys
+
+args = [base64.b64decode(line).decode("utf-8")
+        for line in os.environ["RAW_ARGS"].splitlines()]
+
+d = {"date": "", "location": "", "cost": "", "status": "todo",
+     "what": "", "invoice-id": "", "claim-id": "", "submitted-date": "",
+     "amount-paid": "", "notes": ""}
+i = 0
+while i < len(args):
+    k = args[i].lstrip("-")
+    if k in d and i + 1 < len(args):
+        d[k] = args[i + 1]; i += 2
+    else:
+        raise SystemExit("unknown arg: %s" % args[i])
+for k in ("date", "location", "cost", "what"):
+    if not d[k]:
+        raise SystemExit("need --date --location --cost --what")
+if d["location"] == "MPH" and not d["invoice-id"]:
+    raise SystemExit("MPH rows need --invoice-id")
+
+cfg = open(os.path.join(os.environ["SKILL_DIR"], "config.md")).read()
+c = json.loads(re.search(r'```json\n(.*?)```', cfg, re.S).group(1))
+raw = subprocess.run(
+    ["hatch_gws_cli", "sheets", "spreadsheets", "values", "append",
+     "--params", json.dumps({"spreadsheetId": c["spreadsheet_id"],
+                             "range": "%s!B:K" % c["spreadsheet_tab"],
+                             "valueInputOption": "USER_ENTERED"}),
+     "--json", json.dumps({"values": [[d["invoice-id"], d["claim-id"],
+                                       d["date"], d["submitted-date"],
+                                       d["status"], d["cost"],
+                                       d["amount-paid"], d["location"],
+                                       d["what"], d["notes"]]]})],
+    capture_output=True, text=True)
+try:
+    r = json.loads(raw.stdout)
+    rng = r.get("updates", {}).get("updatedRange")
+    if raw.returncode != 0 or not rng:
+        raise ValueError(raw.stdout[:300])
+except Exception as e:
+    print("LOG FAILED: spreadsheet append did not confirm: %s" % e,
+          file=sys.stderr)
+    raise SystemExit(1)
+print("row appended:", rng)
+EOF

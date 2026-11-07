@@ -1,0 +1,5 @@
+#!/bin/bash
+# bin/test — run the simi-claims unit tests (parser spec).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+python3 -m unittest discover -s tests -v

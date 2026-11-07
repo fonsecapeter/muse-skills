@@ -10,6 +10,9 @@ jobs:
           name: test
           command: bin/test
       - run:
+          name: simi-claims tests
+          command: simi/simi-claims/bin/test
+      - run:
           name: link smoke test
           command: |
             bin/link-skills --dest /tmp/live-tree
