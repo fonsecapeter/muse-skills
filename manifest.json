@@ -4,10 +4,6 @@
   "skills": [
     {
       "bucket": "studio",
-      "name": "learning-loop"
-    },
-    {
-      "bucket": "studio",
       "name": "skill-deps"
     },
     {
@@ -29,6 +25,16 @@
     {
       "name": "mermaid",
       "bucket": "code"
+    },
+    {
+      "name": "record-learning",
+      "bucket": "studio",
+      "path": "studio/learning/record-learning"
+    },
+    {
+      "name": "sweep-learnings",
+      "bucket": "studio",
+      "path": "studio/learning/sweep-learnings"
     }
   ]
 }

@@ -27,9 +27,9 @@ alike. It lives in one place only: read it there, never copy it.
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning coding "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning coding "<learning>"`.
 
 ## Dependencies
 
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop

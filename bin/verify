@@ -27,7 +27,8 @@ def roster_problems(repo: Path, manifest_path: Path) -> list[str]:
         return [f"cannot read roster from {manifest_path}: {err}"]
     problems = []
     for item in skills:
-        skill_dir = repo / item["bucket"] / item["name"]
+        rel = item.get("path") or f"{item['bucket']}/{item['name']}"
+        skill_dir = repo / rel
         if not skill_dir.is_dir():
             problems.append(f"roster skill missing from repo: {skill_dir}")
         elif not (skill_dir / "SKILL.md").is_file():

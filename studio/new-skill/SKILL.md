@@ -9,7 +9,7 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
   (`/opt/muse/skills/skill-creator`) owns the mechanics of authoring a
   skill — structure, naming, frontmatter. Read it and follow it.
 - **Peter's conventions**
-  (`~/workspace/custom-skills/learning-loop/CONVENTIONS.md`) apply **on
+  (`~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`) apply **on
   top of** the built-in flow and must still be followed — while drafting
   and while editing, every version complies.
 
@@ -19,10 +19,10 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
    `/opt/muse/skills/custom-connector-setup/templates/skill/SKILL.md` (plus its authoring guide)
    for the mechanics.
 2. **Read the conventions.**
-   `~/workspace/custom-skills/learning-loop/CONVENTIONS.md`: playbook in
+   `~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`: playbook in
    SKILL.md, machine values in `config.md`, deterministic work scripted
    as `bin/` CLIs wherever possible, crons as one-liners, declared
-   Dependencies, learning-loop deferral. Apply throughout drafting — not
+   Dependencies, record-learning deferral. Apply throughout drafting — not
    as a cleanup pass at the end. Author in Muse's format:
    `skill.yaml` carries the name, title, and description — the
    description is the trigger text Muse matches on, so
@@ -40,12 +40,13 @@ From here the nightly sweep audits the new skill against CONVENTIONS.md.
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning new-skill "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning new-skill "<learning>"`.
 
 ## Dependencies
 
-- learning-loop (bin/record-learning) — learning loop; CONVENTIONS.md lives here
+- record-learning (bin/record-learning) — learning loop
+- sweep-learnings (CONVENTIONS.md) — conventions live there
 - skill-deps (bin/map) — verify the new skill's declared dependencies
 ## Available connectors
 

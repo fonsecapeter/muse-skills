@@ -32,6 +32,11 @@ class LinkSkillsError(Exception):
 class RosterEntry:
     name: str
     bucket: str
+    path: str | None = None
+
+    @property
+    def source_rel(self) -> Path:
+        return Path(self.path) if self.path else Path(self.bucket) / self.name
 
 
 @dataclass(frozen=True)
@@ -44,7 +49,8 @@ def load_roster(manifest_path: Path) -> list[RosterEntry]:
     try:
         data = json.loads(manifest_path.read_text())
         entries = [
-            RosterEntry(name=item["name"], bucket=item["bucket"])
+            RosterEntry(name=item["name"], bucket=item["bucket"],
+                        path=item.get("path"))
             for item in data["skills"]
         ]
     except (OSError, ValueError, KeyError, TypeError) as err:
@@ -59,7 +65,7 @@ def load_roster(manifest_path: Path) -> list[RosterEntry]:
 
 def expected_links(roster: list[RosterEntry], repo: Path, dest: Path) -> list[Link]:
     return [
-        Link(source=repo / entry.bucket / entry.name, target=dest / entry.name)
+        Link(source=repo / entry.source_rel, target=dest / entry.name)
         for entry in roster
     ]
 

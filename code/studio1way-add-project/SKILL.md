@@ -50,12 +50,12 @@ tooling parses the enums from the Java models, so it cannot drift.
 
 ## Dependencies
 
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning studio1way-add-project "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning studio1way-add-project "<learning>"`.
 
 ## Available connectors
 

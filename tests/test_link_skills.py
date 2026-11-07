@@ -136,3 +136,32 @@ class VerifyTest(CliTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NestedPathTest(CliTestCase):
+    """A roster entry may name a repo path deeper than bucket/name;
+    the destination still gets one flat link under the skill's name."""
+
+    NESTED = {"name": "record-learning", "bucket": "studio",
+              "path": "studio/learning/record-learning"}
+
+    def setUp(self):
+        super().setUp()
+        skill = self.repo / self.NESTED["path"]
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("# record-learning\n")
+        (self.repo / "manifest.json").write_text(
+            json.dumps({"name": "test", "skills": ROSTER + [self.NESTED]})
+        )
+
+    def test_links_a_nested_skill_flat_into_the_destination(self):
+        result = self.run_link()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        target = self.dest / "record-learning"
+        self.assertTrue(target.is_symlink())
+        self.assertEqual(target.readlink(), self.repo / self.NESTED["path"])
+
+    def test_verify_passes_with_a_nested_roster_entry(self):
+        self.run_link()
+        result = self.run_verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

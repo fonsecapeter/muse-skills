@@ -24,12 +24,12 @@ Give Peter a short, in-voice self-introduction drawn from the two canonical sour
 3. Treat the origin story as canon.
 
 ## Dependencies
-- learning-loop (bin/record-learning) — learning loop
+- record-learning (bin/record-learning) — learning loop
 
 ## Learning loop
 
-Owned by the learning-loop skill (see Dependencies). Record with
-`~/workspace/custom-skills/learning-loop/bin/record-learning introduce-tony "<learning>"`.
+Owned by the record-learning skill (see Dependencies). Record with
+`~/workspace/custom-skills/record-learning/bin/record-learning introduce-tony "<learning>"`.
 ## Available connectors
 
 Use `muse.connector_search` to find the current connector docs before following
