@@ -1,0 +1,34 @@
+#!/bin/bash
+# dedupe-check <pdf> — check whether this invoice already lives in the Drive
+# folder. Prints JSON: {"sha256":..., "name_collisions":[...], "size_matches":[...]}.
+# A name collision with identical size is almost certainly a duplicate.
+set -euo pipefail
+PDF="$1"
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export SKILL_DIR PDF
+python3 <<'EOF'
+import json, os, re, hashlib, subprocess, sys
+cfg = open(os.path.join(os.environ["SKILL_DIR"], "config.md")).read()
+folder_id = json.loads(re.search(r'```json\n(.*?)```', cfg, re.S).group(1))["drive_folder_id"]
+pdf = os.environ["PDF"]
+sha = hashlib.sha256(open(pdf, "rb").read()).hexdigest()
+size = str(os.path.getsize(pdf))
+base = os.path.basename(pdf)
+q = "'%s' in parents and trashed=false" % folder_id
+raw = subprocess.run(
+    ["hatch_gws_cli", "drive", "files", "list", "--params",
+     json.dumps({"q": q, "pageSize": 100, "fields": "files(name,size)"})],
+    capture_output=True, text=True)
+try:
+    files = json.loads(raw.stdout).get("files", [])
+    if raw.returncode != 0:
+        raise ValueError(raw.stdout[:300])
+except Exception as e:
+    print("DEDUPE CHECK FAILED: drive listing error: %s" % e, file=sys.stderr)
+    raise SystemExit(1)
+print(json.dumps({
+    "sha256": sha,
+    "name_collisions": [f["name"] for f in files if f["name"] == base],
+    "size_matches": [f["name"] for f in files if str(f.get("size", "")) == size],
+}, indent=2))
+EOF

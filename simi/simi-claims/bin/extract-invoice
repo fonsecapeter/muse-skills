@@ -1,0 +1,10 @@
+#!/bin/bash
+# extract-invoice <pdf> — parse a Mission Pet Hospital invoice PDF into JSON.
+# Prints: {"invoice_number","date","total","line_items":[...],"filename"}
+# Parsing lives in bin/invoice_parse.py (unit-tested); this is the thin
+# pdftotext wrapper. Fails loudly (non-zero + stderr) on any parse miss.
+set -euo pipefail
+PDF="$1"
+[ -f "$PDF" ] || { echo "extract-invoice: no such file: $PDF" >&2; exit 1; }
+DIR="$(cd "$(dirname "$0")" && pwd)"
+pdftotext -layout "$PDF" - 2>/dev/null | python3 "$DIR/invoice_parse.py"

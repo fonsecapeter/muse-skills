@@ -1,0 +1,11 @@
+name: simi_inbox_scan
+title: Simi inbox scan
+description: Watch Gmail for new Mission Pet Hospital invoices for Simi and idempotently stage each new one in Drive with a pending claims spreadsheet row for Peter to file.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false

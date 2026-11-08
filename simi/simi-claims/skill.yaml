@@ -1,0 +1,11 @@
+name: simi_claims
+title: Simi claims
+description: Line up Simi's Nationwide pet insurance claims by extracting invoice data, deduping, uploading the renamed PDF to Drive and logging the tracking row Peter files from.
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false
