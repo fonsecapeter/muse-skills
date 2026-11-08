@@ -35,8 +35,7 @@ update the matching todo. No separate ask needed. Then:
 5. **Jeep project?** If the todo belongs to the Jeep project and the
    completion is work performed on the Jeep, it isn't finished until
    the work is also logged in the Jeep Service Log. That logging is
-   owned by the jeep-maintenance skill — run its
-   `bin/jeep-maintenance log` (see its SKILL.md); don't duplicate the
+   owned by the jeep-log skill; follow it — don't duplicate the
    logging logic here. Jeep project only.
 
 History: this rule lives here, in the skill named for the task,
@@ -66,7 +65,7 @@ because as fine print in the notion skill it missed twice
 - notion (bin/notion-api) — all Notion reads/writes go through it; never reimplement auth
 - todo-find (bin/find-todo) — locating the todo a completion or update belongs to
 - todo-file (SKILL.md) — the body-writing rules for edits to existing bodies
-- jeep-maintenance (~/workspace/custom-skills/local-jeep-maintenance/bin/jeep-maintenance) — Jeep-project completions that are work on the Jeep are logged to the Jeep Service Log through its log command
+- jeep-log (~/workspace/custom-skills/jeep-log) — Jeep-project completions that are work on the Jeep are logged to the Jeep Service Log through it
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop

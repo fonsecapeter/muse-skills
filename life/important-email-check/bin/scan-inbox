@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+# scan-inbox — pull Peter's recent Gmail inbox and nominate the messages
+# that might be important: unread mail plus anything matching the watch
+# senders/terms in config.md. Deterministic only — importance judgment
+# lives in SKILL.md, in the agent. Prints a JSON report.
+# Usage: bin/scan-inbox
+# Fails loudly (stderr + non-zero exit) on any Gmail or parse failure.
+import json, os, re, subprocess, sys
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    cfg = json.loads(re.search(r"```json\n(.*?)```",
+        open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+except Exception as e:
+    print(f"scan-inbox: cannot load config.md: {e}", file=sys.stderr)
+    sys.exit(1)
+
+TZ = ZoneInfo("America/Los_Angeles")
+now = datetime.now(TZ)
+cutoff = now - timedelta(hours=cfg["window_hours"])
+
+def gws(*args):
+    r = subprocess.run(["hatch_gws_cli"] + list(args),
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"scan-inbox: hatch_gws_cli failed: {' '.join(args[:3])}: "
+              f"{r.stderr.strip()[:300]}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        d = json.loads(r.stdout)
+    except Exception:
+        print(f"scan-inbox: unparseable Gmail response: {r.stdout[:200]}",
+              file=sys.stderr)
+        sys.exit(1)
+    if isinstance(d, dict) and d.get("error"):
+        print(f"scan-inbox: Gmail API error: {str(d['error'])[:300]}",
+              file=sys.stderr)
+        sys.exit(1)
+    return d
+
+def header(msg, name):
+    for h in msg.get("payload", {}).get("headers", []):
+        if h.get("name", "").lower() == name.lower():
+            return h.get("value", "")
+    return ""
+
+raw = gws("gmail", "users", "messages", "list", "--params",
+          json.dumps({"userId": "me", "q": cfg["gmail_query"],
+                      "maxResults": cfg["max_results"]}))
+ids = [m["id"] for m in raw.get("messages", [])]
+
+watch_senders = [s.lower() for s in cfg["watch_senders"]]
+watch_terms = [t.lower() for t in cfg["watch_terms"]]
+exclude_terms = [t.lower() for t in cfg["exclude_terms"]]
+exclude_senders = [s.lower() for s in cfg.get("exclude_senders", [])]
+
+candidates, others = [], []
+for mid in ids:
+    msg = gws("gmail", "users", "messages", "get", "--params",
+              json.dumps({"userId": "me", "id": mid, "format": "metadata",
+                          "metadataHeaders": ["From", "Subject", "Date"]}))
+    ts = datetime.fromtimestamp(int(msg.get("internalDate", "0")) / 1000,
+                                tz=timezone.utc).astimezone(TZ)
+    if ts < cutoff:
+        continue
+    sender = header(msg, "From")
+    if any(s in sender.lower() for s in exclude_senders):
+        continue
+    subject = header(msg, "Subject")
+    snippet = msg.get("snippet", "")[:200]
+    unread = "UNREAD" in msg.get("labelIds", [])
+    hay = f"{sender} {subject} {snippet}".lower()
+    hits = sorted({t for t in watch_terms if t in hay} |
+                  {s for s in watch_senders if s in sender.lower()})
+    excluded = any(t in hay for t in exclude_terms) and not hits
+    rec = {"id": mid, "from": sender, "subject": subject,
+           "date": ts.strftime("%a %b %d %I:%M %p"),
+           "snippet": snippet, "unread": unread,
+           "link": f"https://mail.google.com/mail/u/0/#all/{mid}",
+           "hits": hits}
+    if excluded:
+        continue
+    if unread or hits:
+        candidates.append(rec)
+    else:
+        others.append({k: rec[k] for k in ("id", "from", "subject",
+                                           "date", "unread")})
+
+candidates.sort(key=lambda r: (not r["unread"], -len(r["hits"])))
+print(json.dumps({"as_of": now.isoformat(timespec="seconds"),
+                  "window_hours": cfg["window_hours"], "gmail_ok": True,
+                  "count_total": len(candidates) + len(others),
+                  "candidates": candidates, "others": others}, indent=1))
