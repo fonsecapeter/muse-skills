@@ -2,9 +2,8 @@
 
 Watch Gmail for new Mission Pet Hospital invoices and line them up for
 Peter — one skill, one job: Gmail in, invoice PDFs lined up in Drive plus
-a `todo` spreadsheet row. Peter files on Nationwide himself; the
-simi-claims skill owns the row from there (Peter's `invoice_processing`
-doc is the canonical handoff).
+a `todo` spreadsheet row. The simi-claims skill owns the row from
+there (Peter's `invoice_processing` doc is the canonical handoff).
 
 ## How it works
 
@@ -92,10 +91,8 @@ invoice PDF and the Nationwide login link
 (https://my.petinsurance.com/login) — that's his cue to file, per his
 `invoice_processing` doc.
 
-Status vocabulary (model set 2026-11-05, see the simi-claims skill):
-`todo` (invoice captured, no claim in Nationwide) → `submitted`
-(claim in the portal; claim_id + submitted_date on the row) →
-`processed` (check deposited, amount_paid filled).
+Row statuses (`todo` → `submitted` → `processed`) are defined in the
+simi-claims skill's model — it is the single source for them.
 
 ## Standing rules
 

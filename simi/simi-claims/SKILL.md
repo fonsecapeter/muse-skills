@@ -1,12 +1,11 @@
 # simi-claims
 
-Simi's Nationwide pet-insurance claim toolkit: deterministic CLIs for
-invoice extraction, Drive upload, and spreadsheet logging, plus the
-judgment calls (classification, chart rule, plan knowledge) for lining
-claims up. The `simi-inbox-scan` skill drives the Gmail watch and calls
-these CLIs; Peter files on Nationwide himself. The canonical handoff
-doc is Peter's `invoice_processing` Google Doc in the Vet folder — this
-pipeline mirrors it.
+Simi's Nationwide pet-insurance claim toolkit: CLIs for invoice
+extraction, Drive upload, and spreadsheet logging, plus the
+classification, chart, and plan knowledge for lining claims up. The
+`simi-inbox-scan` skill drives the Gmail watch and calls these CLIs.
+The canonical handoff doc is Peter's `invoice_processing` Google Doc
+in the Vet folder — this pipeline mirrors it.
 
 ## The pipeline (one invoice PDF)
 
@@ -112,9 +111,8 @@ in this skill runs them against real invoice fixtures.
 - Read-only by default: reading Gmail/Drive/Sheets is fine. Uploading the
   renamed PDF and appending the spreadsheet row need Peter's explicit ask
   for that claim — his "process this one" counts.
-- Filing on Nationwide always needs Peter's sign-in and his go-ahead on
-  the exact claim content. Never file silently — filing stays his
-  manual step (see CONNECTION.md).
+- Filing on Nationwide always needs Peter's go-ahead on the exact
+  claim content. Never file silently.
 - CLIs fail loudly, never silently. Every CLI exits non-zero with a
   stderr message on any failed parse or unconfirmed write, and validates
   its results (return code + parsed fields) before reporting success —

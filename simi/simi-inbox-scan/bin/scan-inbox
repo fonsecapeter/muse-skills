@@ -7,6 +7,8 @@
 # "invoices/processed", closing it as processed when the check lands.
 # Prints a JSON report.
 # Usage: bin/scan-inbox
+# Fails loudly (stderr + non-zero exit) on any Gmail/API or parse
+# failure — a Gmail failure must never silently produce an empty report.
 import json, os, re, sys, hashlib, base64, subprocess, tempfile
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,22 +24,38 @@ if os.path.exists(STATE):
     state = json.load(open(STATE))
 seen, stored = set(state["seen_message_ids"]), set(state["stored_sha256s"])
 
+def fail(msg):
+    print("scan-inbox: %s" % msg, file=sys.stderr)
+    sys.exit(1)
+
 def gws(*args):
-    return subprocess.run(["hatch_gws_cli"] + list(args),
-                          capture_output=True, text=True).stdout
+    r = subprocess.run(["hatch_gws_cli"] + list(args),
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        fail("hatch_gws_cli failed: %s: %s"
+             % (" ".join(args[:3]), r.stderr.strip()[:300]))
+    try:
+        d = json.loads(r.stdout)
+    except Exception:
+        fail("unparseable response: %s" % r.stdout[:200])
+    if isinstance(d, dict) and d.get("error"):
+        fail("API error: %s" % str(d["error"])[:300])
+    return d
 
 def gmail_list(q, max_n):
-    out = gws("gmail", "users", "messages", "list", "--params",
-              json.dumps({"userId": "me", "q": q, "maxResults": max_n}))
-    try:
-        return json.loads(out).get("messages", [])
-    except Exception:
-        return []
+    d = gws("gmail", "users", "messages", "list", "--params",
+            json.dumps({"userId": "me", "q": q, "maxResults": max_n}))
+    msgs = d.get("messages", [])
+    if not isinstance(msgs, list):
+        fail("unexpected Gmail list response: %s" % str(d)[:200])
+    return msgs
 
 def gmail_get(mid):
-    out = gws("gmail", "users", "messages", "get", "--params",
-              json.dumps({"userId": "me", "id": mid, "format": "full"}))
-    return json.loads(out)
+    d = gws("gmail", "users", "messages", "get", "--params",
+            json.dumps({"userId": "me", "id": mid, "format": "full"}))
+    if not isinstance(d, dict):
+        fail("unexpected Gmail get response: %s" % str(d)[:200])
+    return d
 
 def attachments(msg):
     found = []
@@ -50,9 +68,12 @@ def attachments(msg):
     return found
 
 def download(mid, att_id):
-    out = gws("gmail", "users", "messages", "attachments", "get", "--params",
-              json.dumps({"userId": "me", "messageId": mid, "id": att_id}))
-    data = json.loads(out)["data"].replace("-", "+").replace("_", "/")
+    d = gws("gmail", "users", "messages", "attachments", "get", "--params",
+            json.dumps({"userId": "me", "messageId": mid, "id": att_id}))
+    data = d.get("data")
+    if not isinstance(data, str):
+        fail("attachment response has no data: %s" % str(d)[:200])
+    data = data.replace("-", "+").replace("_", "/")
     data += "=" * (-len(data) % 4)
     return base64.b64decode(data)
 
@@ -65,9 +86,9 @@ scfg = json.loads(re.search(r'```json\n(.*?)```',
     open(os.path.join(CLAIMS, "config.md")).read(), re.S).group(1))
 captured_numbers, captured_datetotals = set(), set()
 try:
-    rows = json.loads(gws("sheets", "spreadsheets", "values", "get", "--params",
+    rows = gws("sheets", "spreadsheets", "values", "get", "--params",
         json.dumps({"spreadsheetId": scfg["spreadsheet_id"],
-                    "range": "%s!B:K" % scfg["spreadsheet_tab"]}))
+                    "range": "%s!B:K" % scfg["spreadsheet_tab"]})
         ).get("values", [])
     for r in rows:
         if r and r[0].strip():
@@ -83,10 +104,10 @@ for fid in (cfg["unprocessed_folder_id"], scfg["drive_folder_id"]):
     if not fid:
         continue
     try:
-        files = json.loads(gws("drive", "files", "list", "--params",
+        files = gws("drive", "files", "list", "--params",
             json.dumps({"q": "'%s' in parents and trashed=false" % fid,
                         "pageSize": 100, "fields": "files(name)"})
-            )).get("files", [])
+            ).get("files", [])
         drive_names.update(f["name"] for f in files)
     except Exception:
         pass
