@@ -35,6 +35,29 @@ substitute for following the conventions.
   (`Run the <name> skill: follow ~/workspace/custom-skills/<name>/SKILL.md ...`).
   The playbook lives in the skill, never in the cron.
 
+## Writing the playbook
+
+- **State only what has been verified.** A claim about how a service
+  or site behaves carries the observation behind it, not lore passed
+  between drafts. If it hasn't been checked, it isn't stated as fact.
+  Evidence: the simi skills said Nationwide "blocks automated
+  browsers outright" for months; a live check (2026-11-07) showed the
+  page loads cleanly, and the only real observation was a bot check
+  after sign-in.
+- **Detail must serve the job.** History, incident narrative, and
+  snapshot counts rot and bloat. The playbook carries what changes
+  the agent's actions; the story of how a rule was learned lives in
+  memory, not the skill.
+- **One source of truth across related skills.** A fact, model, or
+  vocabulary is defined once, in the skill that owns it; sibling
+  skills defer to it in a line instead of restating it. Duplication
+  across skills is drift.
+- **No generic boilerplate.** A caution that applies to every skill
+  belongs to the platform rules, not repeated in each playbook.
+- **Say what the skill does, not how it is built.** Intros don't
+  narrate the architecture ("deterministic CLIs", "judgment calls") —
+  the skill.yaml description is the trigger, the body is the work.
+
 ## One skill tree — the repo (moved 2026-11-06, Peter's call)
 
 - The source of truth is the **muse-skills repo**
@@ -52,6 +75,9 @@ substitute for following the conventions.
   moves, move it — and update every cron body, config pointer, and
   dependency line in the same change (skill-deps `bin/map` verifies
   the graph).
+- **One unit of work per diff.** A bucket migration, a conventions
+  change, or a single new skill lands in its own diff — never bundled
+  together.
 
 ## Public repo — nothing sensitive in a skill (Peter's call, 2026-11-05)
 
