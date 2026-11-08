@@ -1,0 +1,10 @@
+name: gtd_review
+title: GTD review
+description: 'Summarize open Intake Items + Inventory + TODOs for high-level review'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

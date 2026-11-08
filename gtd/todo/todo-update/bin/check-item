@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+# check-item — check (or uncheck) one to_do item inside a Notion todo's
+# body checklist, then re-read to verify. The partial-completion tool:
+# Peter finished one item of a bigger todo -> check that box, keep the
+# todo open.
+# Usage: bin/check-item <page-id> "<item text>" [--off]
+# Fails loudly (stderr + non-zero exit) on zero/multiple matches or if
+# verification disagrees.
+import json, os, re, subprocess, sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    cfg = json.loads(re.search(r"```json\n(.*?)```",
+        open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+except Exception as e:
+    print(f"check-item: cannot load config.md: {e}", file=sys.stderr)
+    sys.exit(1)
+API = os.path.expanduser(cfg["notion_api"])
+
+def notion(method, path, data=None):
+    args = [API, method, path]
+    if data is not None:
+        args += ["--data", json.dumps(data)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"check-item: notion-api failed: {method} {path}: "
+              f"{r.stderr.strip()[:300]}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        print(f"check-item: unparseable response: {r.stdout[:200]}",
+              file=sys.stderr)
+        sys.exit(1)
+
+def children(page_id):
+    out, cursor = [], None
+    while True:
+        path = f"/blocks/{page_id}/children?page_size=100"
+        if cursor:
+            path += f"&start_cursor={cursor}"
+        d = notion("GET", path)
+        out.extend(d.get("results", []))
+        if not d.get("has_more"):
+            return out
+        cursor = d.get("next_cursor")
+
+args = [a for a in sys.argv[1:] if a != "--off"]
+off = "--off" in sys.argv
+if len(args) != 2:
+    print('usage: check-item <page-id> "<item text>" [--off]',
+          file=sys.stderr)
+    sys.exit(2)
+page_id, needle = args[0], args[1].lower()
+
+def text_of(b):
+    return "".join(t.get("plain_text", "")
+                   for t in b.get("to_do", {}).get("rich_text", []))
+
+matches = [b for b in children(page_id)
+           if b.get("type") == "to_do" and needle in text_of(b).lower()]
+if not matches:
+    print(f"check-item: no to_do item matching {args[1]!r} in {page_id}",
+          file=sys.stderr)
+    sys.exit(1)
+if len(matches) > 1:
+    print(f"check-item: {len(matches)} items match {args[1]!r}; "
+          "be more specific:", file=sys.stderr)
+    for b in matches:
+        print(f"  {b['id']} | {text_of(b)}", file=sys.stderr)
+    sys.exit(1)
+
+block = matches[0]
+full_text = text_of(block)
+notion("PATCH", f"/blocks/{block['id']}",
+       {"to_do": {"rich_text": [{"type": "text",
+                                 "text": {"content": full_text}}],
+                  "checked": not off}})
+
+after = [b for b in children(page_id) if b["id"] == block["id"]]
+checked = after[0].get("to_do", {}).get("checked") if after else None
+if checked != (not off):
+    print(f"check-item: verification failed — checked={checked}, "
+          f"wanted {not off}", file=sys.stderr)
+    sys.exit(1)
+print(json.dumps({"page_id": page_id, "block_id": block["id"],
+                  "text": full_text, "checked": checked,
+                  "verified": True}, indent=1))

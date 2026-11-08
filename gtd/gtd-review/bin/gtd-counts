@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Count open items for the Sunday GTD digest. Read-only.
+
+Reads config values from ../config.md (the ```json fenced block), then:
+- Google Tasks: open counts for the configured lists (paginated).
+- Notion: open count for the TODO database via the notion skill's
+  bin/notion-api CLI (this skill defers to the notion skill for all
+  Notion access — it never reimplements auth).
+
+Prints JSON, e.g. {"intake": 12, "inventory": 3, "notion_todo": 41}.
+A source that errors reports null; the digest renders that as unavailable.
+
+Usage:
+    bin/gtd-counts
+    bin/gtd-counts --skip-google-tasks   # e.g. when the Tasks API is rate-limited
+"""
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+SKILL_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_config() -> dict:
+    text = (SKILL_DIR / "config.md").read_text()
+    m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.S)
+    if not m:
+        raise RuntimeError("no ```json config block found in config.md")
+    return json.loads(m.group(1))
+
+
+def run_json(cmd: list[str]) -> dict | None:
+    """Run a CLI, return parsed JSON stdout, or None on any failure."""
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    out = proc.stdout
+    start, end = out.find("{"), out.rfind("}")
+    if start < 0 or end < 0:
+        return None
+    try:
+        data = json.loads(out[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+    if isinstance(data, dict) and "error" in data:
+        return None
+    return data
+
+
+def google_tasks_counts(list_names: list[str]) -> dict[str, int | None]:
+    tasklists = run_json(["hatch_gws_cli", "tasks", "tasklists", "list"])
+    ids = {}
+    if tasklists:
+        for tl in tasklists.get("items", []):
+            if tl.get("title") in list_names:
+                ids[tl["title"]] = tl["id"]
+    counts: dict[str, int | None] = {}
+    for name in list_names:
+        list_id = ids.get(name)
+        if not list_id:
+            counts[name.lower()] = None
+            continue
+        total, page_token = 0, None
+        ok = True
+        while True:
+            params: dict = {"tasklist": list_id, "showCompleted": False}
+            if page_token:
+                params["pageToken"] = page_token
+            resp = run_json(
+                ["hatch_gws_cli", "tasks", "tasks", "list",
+                 "--params", json.dumps(params)]
+            )
+            if resp is None:
+                ok = False
+                break
+            total += len(resp.get("items", []))
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        counts[name.lower()] = total if ok else None
+    return counts
+
+
+def notion_todo_count(database_id: str, closed_statuses: list[str]) -> int | None:
+    notion_api = Path(load_config()["notion_api"]).expanduser()
+    # Open = Status not in closed_statuses (the old Done checkbox is gone;
+    # completion is now the Status select).
+    filt: dict = {"and": [
+        {"property": "Status", "status": {"does_not_equal": s}}
+        for s in closed_statuses
+    ]}
+    total, cursor = 0, None
+    while True:
+        body: dict = {"filter": filt, "page_size": 100}
+        if cursor:
+            body["start_cursor"] = cursor
+        resp = run_json(
+            [str(notion_api), "POST", f"/databases/{database_id}/query",
+             "--data", json.dumps(body)]
+        )
+        if resp is None:
+            return None
+        total += len(resp.get("results", []))
+        if not resp.get("has_more"):
+            return total
+        cursor = resp.get("next_cursor")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--skip-google-tasks", action="store_true")
+    args = parser.parse_args()
+
+    config = load_config()
+    result: dict[str, int | None] = {}
+
+    if args.skip_google_tasks:
+        for name in config["google_tasks_lists"]:
+            result[name.lower()] = None
+    else:
+        result.update(google_tasks_counts(config["google_tasks_lists"]))
+
+    result["notion_todo"] = notion_todo_count(
+        config["notion_todo_database_id"],
+        config.get("closed_statuses", ["Done", "Not Doing"]),
+    )
+    print(json.dumps(result))
+
+
+if __name__ == "__main__":
+    main()

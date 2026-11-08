@@ -43,6 +43,37 @@
     {
       "name": "simi-inbox-scan",
       "bucket": "simi"
+    },
+    {
+      "name": "gtd-review",
+      "bucket": "gtd"
+    },
+    {
+      "name": "notion-due-check",
+      "bucket": "gtd"
+    },
+    {
+      "name": "todo-action-summary",
+      "bucket": "gtd"
+    },
+    {
+      "name": "todo-file",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-file"
+    },
+    {
+      "name": "todo-update",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-update"
+    },
+    {
+      "name": "todo-find",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-find"
+    },
+    {
+      "name": "notion",
+      "bucket": "gtd"
     }
   ]
 }

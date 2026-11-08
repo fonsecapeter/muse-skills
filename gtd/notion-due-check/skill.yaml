@@ -1,0 +1,11 @@
+name: notion_due_check
+title: Notion due check
+description: Flag TODOs that are due soon or past-due
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false

@@ -12,7 +12,7 @@ flowchart LR
     TODO --- PROJ["Notion Projects db"]
     TODO --> SURF["Read-only digests<br/>surface what's due"]
     SURF -->|"digests in chat"| PETER["Peter acts"]
-    PETER -->|"reports done in chat"| TODOSKILL["todo skill<br/>marks Done / checks<br/>checklist items"]
+    PETER -->|"reports done in chat"| TODOSKILL["todo-update skill<br/>marks Done / checks<br/>checklist items"]
     TODOSKILL --> TODO
     EMAIL["Gmail<br/>important-email check"] -->|"flags what he missed"| PETER
     DRIVE[("Google Drive<br/>structured reference")] -.->|"evidence + docs<br/>referenced by todos"| TODO
@@ -62,12 +62,12 @@ stateDiagram-v2
 Statuses live on the todo: `TODO` (next up) · `Doing` (in flight) ·
 `Parked` (waiting) · `Not Doing` (dropped) · `Done` (finished).
 A todo's body can hold a checklist — finishing one item checks that
-box and the todo stays open (the todo skill owns this).
+box and the todo stays open (the todo-update skill owns this).
 
 ## Rules that hold it together
 
 - **Chat report = completion signal.** When Peter says it's done,
-  the todo skill updates the todo in the same turn.
+  the todo-update skill updates the todo in the same turn.
 - **Read-only by default.** Audits and digests never edit; writes
   need his ask or his completion report.
 - **Titles are actions.** Details live in the todo body, only if

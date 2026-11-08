@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Deterministic due-date radar for Peter's Notion TODO database.
+
+Reads config.md, queries Notion (via the notion skill's bin/notion-api CLI)
+for open todos due on or before today + lookahead_days, and prints JSON:
+
+    {"overdue": [...], "due_today": [...], "due_soon": [...],
+     "as_of": "2026-09-11", "notion_ok": true}
+
+Each item: {"title": ..., "due": "YYYY-MM-DD", "project": ...}.
+On Notion failure prints {"notion_ok": false, ...} and exits 0 (agent reports it).
+"""
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+from zoneinfo import ZoneInfo
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECTS_DB = None  # discovered from the TODO db's Project relation at runtime
+
+
+def load_config():
+    text = open(os.path.join(SKILL_DIR, "config.md")).read()
+    m = re.search(r"```json\n(.*?)\n```", text, re.S)
+    if not m:
+        raise RuntimeError("config.md has no fenced json block")
+    return json.loads(m.group(1))
+
+
+def notion(method, path, data=None):
+    cmd = [os.path.expanduser(load_config()["notion_api"]), method, path]
+    if data is not None:
+        cmd += ["--data", json.dumps(data)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip()[-300:] or "notion-api failed")
+    return json.loads(proc.stdout)
+
+
+def project_names():
+    """Map project page id -> project name (one query, cached per run)."""
+    resp = notion("POST", f"/databases/{PROJECTS_DB}/query",
+                 {"page_size": 100})
+    names = {}
+    for p in resp.get("results", []):
+        for prop in p["properties"].values():
+            if prop["type"] == "title":
+                names[p["id"]] = "".join(
+                    t["plain_text"] for t in prop["title"])
+                break
+    return names
+
+
+def main():
+    global PROJECTS_DB
+    cfg = load_config()
+    todo_db = cfg["notion_todo_database_id"]
+    lookahead = int(cfg.get("lookahead_days", 3))
+    # Open = any Status not in closed_statuses (completion moved from a
+    # Done checkbox to a Status select: TODO/Parked/Doing/Done/Not Doing).
+    closed = cfg.get("closed_statuses", ["Done", "Not Doing"])
+    today = datetime.datetime.now(ZoneInfo(cfg["timezone"])).date()
+    cutoff = today + datetime.timedelta(days=lookahead)
+
+    out = {"overdue": [], "due_today": [], "due_soon": [],
+           "as_of": today.isoformat(), "notion_ok": True}
+    try:
+        # discover the projects database from the relation property
+        schema = notion("GET", f"/databases/{todo_db}")
+        PROJECTS_DB = schema["properties"]["Project"]["relation"]["database_id"]
+        names = project_names()
+
+        payload = {
+            "filter": {"and": [
+                *[{"property": "Status", "status": {"does_not_equal": s}}
+                  for s in closed],
+                {"property": "Due", "date": {
+                    "on_or_before": cutoff.isoformat()}},
+            ]},
+            "sorts": [{"property": "Due", "direction": "ascending"}],
+            "page_size": 100,
+        }
+        while True:
+            resp = notion("POST", f"/databases/{todo_db}/query", payload)
+            for p in resp.get("results", []):
+                props = p["properties"]
+                title = "".join(t["plain_text"]
+                                for t in props["Task"]["title"])
+                due_raw = (props["Due"]["date"] or {}).get("start", "")
+                due = due_raw[:10]
+                rels = props["Project"]["relation"]
+                project = names.get(rels[0]["id"], "?") if rels else "-"
+                item = {"title": title, "due": due, "project": project,
+                        "url": p.get("url")}
+                if due < today.isoformat():
+                    out["overdue"].append(item)
+                elif due == today.isoformat():
+                    out["due_today"].append(item)
+                else:
+                    out["due_soon"].append(item)
+            if not resp.get("has_more"):
+                break
+            payload["start_cursor"] = resp["next_cursor"]
+    except Exception as e:  # noqa: BLE001 - report, don't crash the cron
+        out = {"overdue": [], "due_today": [], "due_soon": [],
+               "as_of": today.isoformat(), "notion_ok": False,
+               "error": str(e)[:200]}
+
+    print(json.dumps(out))
+
+
+if __name__ == "__main__":
+    main()
