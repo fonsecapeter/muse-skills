@@ -29,7 +29,9 @@ are implemented, printing what it removed.
 4. **Drop implemented entries.** Once a skill's learnings are
    implemented, remove them from the log:
    `bin/sweep-learnings --drop <skill>` (on a partial implementation,
-   edit the log and remove just those lines). Never drop an entry
+   edit the log and remove just those lines). `--drop` removes every
+   entry with that tag, so use it only when all of the tag's entries
+   are implemented; on a mixed tag, edit the log directly. Never drop an entry
    that hasn't been implemented. The PR in step 5 lists what was
    implemented — that listing, plus the diff itself, is the record
    of what changed; no separate learned log is kept.

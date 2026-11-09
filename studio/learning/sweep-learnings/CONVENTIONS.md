@@ -24,6 +24,12 @@ substitute for following the conventions.
   unvalidated parse or an error body. Silent failure is the worst kind —
   evidence: four simi-claims incidents of silent failure (Oct 8–9, 2026)
   hid a full cycle of bad data before anyone noticed.
+- **Verify chained shell edits landed.** In a chained shell command,
+  one failable step silently aborts every later step in the `&&`
+  chain — verify each edit landed (grep the result) instead of
+  trusting the chain's exit line. Evidence: the GTD bucket copy chain
+  lost all its rename seds to a failed `rm` that way, caught only by
+  a closing grep.
 - **Duplicate CLI copies stay in sync.** If the same `bin/` CLI exists
   in more than one place (across skills, or a skill and a
   custom-connector), a fix to one copy is incomplete until all copies
