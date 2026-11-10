@@ -11,6 +11,5 @@ skills_dirs:
 # Directories that are not standalone skills (note folders, amendments).
 exclude_dirs:
   - recovered-skill-notes
-  - local-spaces
   - local_outbound_call_preflight
 ```
