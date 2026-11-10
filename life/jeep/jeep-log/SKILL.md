@@ -15,7 +15,7 @@ live in jeep-schedule.
 - Update the Info tab's Current mileage and Mileage date when Peter reports a fresh odometer reading, replacing the old values. (The log command already advances the anchor when it logs work at a newer mileage.)
 
 ## Dependencies
-- jeep-schedule (bin/jeep-maintenance, config.md) — the CLI and the sheet model the log writes to
+- jeep-schedule (bin/jeep-maintenance) — the CLI and the sheet model the log writes to (config.md sits beside the CLI)
 - todo-update (~/workspace/custom-skills/todo-update) — owns the completion flow for marking Jeep todos Done when Peter reports work
 - record-learning (bin/record-learning) — learning loop
 

@@ -13,7 +13,7 @@ skill runs its check.
 - Report the failure in the chat when the script exits non-zero, with its stderr reason, instead of improvising a check by hand.
 
 ## Dependencies
-- jeep-schedule (bin/jeep-maintenance, config.md) — the CLI, the schedule, and the sheet model this check reads
+- jeep-schedule (bin/jeep-maintenance) — the CLI, the schedule, and the sheet model this check reads (config.md sits beside the CLI)
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop
