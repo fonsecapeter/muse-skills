@@ -1,0 +1,10 @@
+name: studio1way_add_project
+title: Studio 1Way add project
+description: 'Add a project to Studio 1Way'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

@@ -1,6 +1,6 @@
 name: new_skill
 title: New skill
-description: 'Create a new personal skill: run the built-in skill-creator flow, then apply Peter''s workspace conventions on top. Use this whenever Peter asks for a new skill.'
+description: 'Create a new personal skill'
 include_in_prompt: true
 availability:
   confidential_vm: true

@@ -40,7 +40,7 @@ there (Peter's `invoice_processing` doc is the canonical handoff).
    `already_captured`, `incomplete`, `duplicates_skipped`,
    `filtered_out`, `messages_scanned`).
 
-Run it on demand or from a cron one-liner. The daily important-email-check also runs it when it spots a Mission Pet Hospital invoice, so new invoices get lined up the same morning Peter hears about them. It is idempotent: reruns find
+Run it on demand or from a cron one-liner. The important-email-check also runs it when it spots a Mission Pet Hospital invoice, so new invoices get lined up as soon as Peter hears about them. It is idempotent: reruns find
 nothing new, and already-filed invoices are never re-staged.
 
 ## Reconcile

@@ -36,7 +36,7 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
    `~/workspace/custom-skills/skill-deps/bin/map` — the new
    skill must appear with its Dependencies declared and no warnings.
 
-From here the nightly sweep audits the new skill against CONVENTIONS.md.
+From here the sweep audits the new skill against CONVENTIONS.md.
 
 ## Learning loop
 
