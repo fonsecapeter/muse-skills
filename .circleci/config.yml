@@ -13,6 +13,9 @@ jobs:
           name: simi-claims tests
           command: simi/simi-claims/bin/test
       - run:
+          name: jeep-maintenance tests
+          command: cd life/jeep/jeep-schedule && python3 -m unittest discover -s tests
+      - run:
           name: link smoke test
           command: |
             bin/link-skills --dest /tmp/live-tree

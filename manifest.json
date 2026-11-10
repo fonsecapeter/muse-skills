@@ -43,6 +43,76 @@
     {
       "name": "simi-inbox-scan",
       "bucket": "simi"
+    },
+    {
+      "name": "gtd-review",
+      "bucket": "gtd"
+    },
+    {
+      "name": "notion-due-check",
+      "bucket": "gtd"
+    },
+    {
+      "name": "todo-action-summary",
+      "bucket": "gtd"
+    },
+    {
+      "name": "todo-file",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-file"
+    },
+    {
+      "name": "todo-update",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-update"
+    },
+    {
+      "name": "todo-find",
+      "bucket": "gtd",
+      "path": "gtd/todo/todo-find"
+    },
+    {
+      "name": "notion",
+      "bucket": "gtd"
+    },
+    {
+      "name": "haircut-book",
+      "bucket": "life",
+      "path": "life/haircut/haircut-book"
+    },
+    {
+      "name": "haircut-reschedule",
+      "bucket": "life",
+      "path": "life/haircut/haircut-reschedule"
+    },
+    {
+      "name": "haircut-cancel",
+      "bucket": "life",
+      "path": "life/haircut/haircut-cancel"
+    },
+    {
+      "name": "haircut-signin",
+      "bucket": "life",
+      "path": "life/haircut/haircut-signin"
+    },
+    {
+      "name": "important-email-check",
+      "bucket": "life"
+    },
+    {
+      "name": "jeep-check",
+      "bucket": "life",
+      "path": "life/jeep/jeep-check"
+    },
+    {
+      "name": "jeep-log",
+      "bucket": "life",
+      "path": "life/jeep/jeep-log"
+    },
+    {
+      "name": "jeep-schedule",
+      "bucket": "life",
+      "path": "life/jeep/jeep-schedule"
     }
   ]
 }

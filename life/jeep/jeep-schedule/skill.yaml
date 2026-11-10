@@ -1,0 +1,10 @@
+name: jeep_schedule
+title: Jeep schedule
+description: 'Jeep maintenance schedule and service log model'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

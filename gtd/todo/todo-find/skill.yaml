@@ -1,0 +1,10 @@
+name: todo_find
+title: Todo Find
+description: 'Find a specific TODO'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

@@ -1,0 +1,11 @@
+name: important_email_check
+title: Important email check
+description: 'Flag important mail Peter may have missed'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false

@@ -1,0 +1,482 @@
+#!/usr/bin/env python3
+"""Maintenance tooling for Peter's 2017 Jeep Wrangler JK.
+
+Two subcommands:
+
+    jeep-maintenance check
+    jeep-maintenance log --job "Cabin Air Filter" --date 2026-11-02 --miles 90123
+
+`check` is read-only: it reads the Jeep Service Log spreadsheet (Info,
+Oil Changes, Other tabs) via the Google Sheets connector CLI and the open
+Jeep-project todos via the notion skill's bin/notion-api, then prints a
+compact due report.
+
+`log` is the write path for completed work: it appends the actual row
+(date + mileage done), rolls the job's upcoming row forward to the new
+due date/mileage, and advances the Info tab's odometer anchor when the
+logged mileage is newer. It writes only to the spreadsheet. `--dry-run`
+prints the planned writes without applying them.
+
+Config lives in ../config.md (fenced JSON); nothing is hardcoded here.
+"""
+import argparse
+import calendar
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from zoneinfo import ZoneInfo
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Other-tab columns (0-based): A blank, B Actual Date, C Actual Mileage,
+# D Owner, E Actor, F Location, G Job, H Parts, I Notes, J Type,
+# K Interval (mi), L Interval (mo), M Due (mi), N Due (date).
+# Actual columns are filled only on rows for work that was done. Due
+# columns live only on a job's upcoming row — a Scheduled row with no
+# actual date or mileage. The check reads Due from the upcoming row when
+# one exists and otherwise computes it from last actual + interval.
+COL_DATE, COL_MILES, COL_JOB = 1, 2, 6
+COL_TYPE, COL_INT_MI, COL_INT_MO = 9, 10, 11
+COL_DUE_MI, COL_DUE_DATE = 12, 13
+
+OIL_JOBS = {"engine oil", "oil change", "oil"}
+
+SEVERITY = {"OK": 0, "DUE SOON": 1, "DUE NOW": 2}
+
+
+class JeepError(Exception):
+    """A failure a person can act on."""
+
+
+@dataclass
+class Item:
+    """One scheduled service item and its assessed state."""
+    name: str
+    status: str = "OK"
+    reasons: list = field(default_factory=list)
+
+
+def load_config() -> dict:
+    text = open(os.path.join(SKILL_DIR, "config.md")).read()
+    m = re.search(r"```json\n(.*?)\n```", text, re.S)
+    if not m:
+        raise JeepError("config.md has no fenced json block")
+    return json.loads(m.group(1))
+
+
+def run_json(cmd: list, what: str) -> dict:
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        raise JeepError(f"{what} failed: {proc.stderr.strip()[-300:]}")
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        raise JeepError(f"{what} returned unparseable output")
+
+
+def sheet_values(cfg: dict, tab: str) -> list:
+    params = {"spreadsheetId": cfg["spreadsheet_id"], "range": f"{tab}!A1:N200"}
+    out = run_json([cfg["sheets_cli"], "sheets", "spreadsheets", "values", "get",
+                    "--params", json.dumps(params)], f"sheets read of {tab}")
+    return out.get("values", [])
+
+
+def sheet_update(cfg: dict, tab: str, a1_range: str, values: list) -> None:
+    params = {"spreadsheetId": cfg["spreadsheet_id"],
+              "range": f"{tab}!{a1_range}", "valueInputOption": "RAW"}
+    run_json([cfg["sheets_cli"], "sheets", "spreadsheets", "values", "update",
+              "--params", json.dumps(params), "--json",
+              json.dumps({"values": values})], f"sheets write to {tab}")
+
+
+def parse_int(raw: str):
+    """'86,233' -> 86233; '', '?', 'probably never' -> None."""
+    if raw is None:
+        return None
+    digits = raw.replace(",", "").strip()
+    return int(digits) if digits.isdigit() else None
+
+
+def parse_date(raw: str):
+    """'2026-10-29' -> date; anything else -> None."""
+    if not raw:
+        return None
+    try:
+        return datetime.date.fromisoformat(raw.strip()[:10])
+    except ValueError:
+        return None
+
+
+def parse_interval_months(raw: str):
+    """'12' -> 12; '12 mo' -> 12; '10 yr' -> 120; '' -> None."""
+    m = re.match(r"^\s*(\d+)\s*(mo|yr)?\s*$", raw or "")
+    if not m:
+        return None
+    n = int(m.group(1))
+    return n * 12 if m.group(2) == "yr" else n
+
+
+def add_months(d: datetime.date, months: int) -> datetime.date:
+    total = d.year * 12 + (d.month - 1) + months
+    year, month0 = divmod(total, 12)
+    day = min(d.day, calendar.monthrange(year, month0 + 1)[1])
+    return datetime.date(year, month0 + 1, day)
+
+
+def norm_job(raw: str) -> str:
+    return " ".join((raw or "").split())
+
+
+def cell(row: list, idx: int) -> str:
+    return row[idx] if idx < len(row) else ""
+
+
+def header_index(rows: list) -> int:
+    idx = next((i for i, r in enumerate(rows)
+                if norm_job(cell(r, COL_JOB)) == "Job"), None)
+    if idx is None:
+        raise JeepError("Other tab header row not found")
+    return idx
+
+
+def read_info(rows: list) -> tuple:
+    """Info tab key/value rows -> (current mileage, mileage date)."""
+    kv = {cell(r, 0).strip(): cell(r, 1).strip() for r in rows if cell(r, 0)}
+    miles = parse_int(kv.get("Current mileage", ""))
+    mdate = parse_date(kv.get("Mileage date", ""))
+    if miles is None or mdate is None:
+        raise JeepError("Info tab is missing a usable Current mileage / Mileage date")
+    return miles, mdate
+
+
+def read_last_oil(rows: list) -> tuple:
+    """Oil Changes rows -> (date, mileage) of the last logged change."""
+    last = (None, None)
+    for r in rows:
+        d, mi = parse_date(cell(r, COL_DATE)), parse_int(cell(r, COL_MILES))
+        if d is not None and mi is not None:
+            last = (d, mi)
+    if last[0] is None:
+        raise JeepError("Oil Changes tab has no usable oil change row")
+    return last
+
+
+def collect_scheduled(rows: list) -> dict:
+    """Other rows -> {job: schedule facts} for Type == Scheduled rows only.
+
+    A job's last done is its latest row carrying a real date or mileage.
+    A Scheduled row with neither is the job's upcoming row, and its Due
+    cells are the job's due date/mileage. Intervals come from whichever
+    row states them. Spark Plugs anchor on a mileage-0 row, so their
+    100,000 mi interval lands on the factory target.
+    """
+    jobs: dict = {}
+    for r in rows[header_index(rows) + 1:]:
+        if cell(r, COL_TYPE).strip() != "Scheduled":
+            continue
+        job = norm_job(cell(r, COL_JOB))
+        if not job:
+            continue
+        facts = jobs.setdefault(job, {"last_date": None, "last_miles": None,
+                                      "int_mi": None, "int_months": None,
+                                      "due_mi": None, "due_date": None})
+        d, mi = parse_date(cell(r, COL_DATE)), parse_int(cell(r, COL_MILES))
+        if d is not None and (facts["last_date"] is None or d > facts["last_date"]):
+            facts["last_date"] = d
+        if mi is not None and (facts["last_miles"] is None or mi > facts["last_miles"]):
+            facts["last_miles"] = mi
+        if d is None and mi is None:
+            facts["due_mi"] = facts["due_mi"] or parse_int(cell(r, COL_DUE_MI))
+            facts["due_date"] = (facts["due_date"]
+                                 or parse_date(cell(r, COL_DUE_DATE)))
+        facts["int_mi"] = facts["int_mi"] or parse_int(cell(r, COL_INT_MI))
+        facts["int_months"] = (facts["int_months"]
+                               or parse_interval_months(cell(r, COL_INT_MO)))
+    return jobs
+
+
+def judge(item: Item, status: str, reason: str) -> None:
+    if SEVERITY[status] > SEVERITY[item.status]:
+        item.status, item.reasons = status, [reason]
+    elif SEVERITY[status] == SEVERITY[item.status] and status != "OK":
+        item.reasons.append(reason)
+
+
+def assess_miles(item: Item, due_mi: int, now_mi: int, cfg: dict) -> None:
+    left = due_mi - now_mi
+    if left <= 0:
+        judge(item, "DUE NOW", f"due at {due_mi:,} mi")
+    elif left <= int(cfg["due_soon_miles"]):
+        judge(item, "DUE SOON", f"due at {due_mi:,} mi")
+
+
+def assess_time(item: Item, due_date: datetime.date, today: datetime.date,
+                cfg: dict) -> None:
+    left = (due_date - today).days
+    if left <= 0:
+        judge(item, "DUE NOW", f"due {due_date.isoformat()}")
+    elif left <= int(cfg["due_soon_days"]):
+        judge(item, "DUE SOON", f"due {due_date.isoformat()}")
+
+
+def assess(name: str, facts: dict, now_mi: int, today: datetime.date,
+           cfg: dict) -> Item:
+    item = Item(name)
+    if facts.get("due_mi") is not None or facts.get("due_date") is not None:
+        if facts.get("due_mi") is not None:
+            assess_miles(item, facts["due_mi"], now_mi, cfg)
+        if facts.get("due_date") is not None:
+            assess_time(item, facts["due_date"], today, cfg)
+        return item
+    if facts["last_date"] is None and facts["last_miles"] is None:
+        judge(item, "DUE NOW", "never done")
+        return item
+    if facts["int_mi"] is not None and facts["last_miles"] is not None:
+        assess_miles(item, facts["last_miles"] + facts["int_mi"], now_mi, cfg)
+    if facts["int_months"] is not None and facts["last_date"] is not None:
+        assess_time(item, add_months(facts["last_date"], facts["int_months"]),
+                    today, cfg)
+    return item
+
+
+def read_jeep_todos(cfg: dict) -> list:
+    closed = [{"property": "Status", "status": {"does_not_equal": s}}
+              for s in cfg["closed_statuses"]]
+    payload = {"filter": {"and": [
+        {"property": "Project",
+         "relation": {"contains": cfg["jeep_project_id"]}}, *closed]},
+        "page_size": 100}
+    out = run_json([os.path.expanduser(cfg["notion_api"]), "POST",
+                    f"/databases/{cfg['notion_todo_database_id']}/query",
+                    "--data", json.dumps(payload)], "notion todo query")
+    titles = []
+    for page in out.get("results", []):
+        title = "".join(t["plain_text"]
+                        for t in page["properties"]["Task"]["title"])
+        if title:
+            titles.append(title)
+    return titles
+
+
+def cmd_check(cfg: dict) -> str:
+    tz = ZoneInfo(cfg["timezone"])
+    today = datetime.datetime.now(tz).date()
+    now_mi, mdate = read_info(sheet_values(cfg, cfg["info_tab"]))
+    age = (today - mdate).days
+
+    items = [assess(name, facts, now_mi, today, cfg)
+             for name, facts in collect_scheduled(
+                 sheet_values(cfg, cfg["other_tab"])).items()]
+    o_date, o_mi = read_last_oil(sheet_values(cfg, cfg["oil_tab"]))
+    oil = assess("Engine Oil", {"last_date": o_date, "last_miles": o_mi,
+                                "int_mi": int(cfg["oil_interval_miles"]),
+                                "int_months": int(cfg["oil_interval_months"]),
+                                "due_mi": None, "due_date": None},
+                 now_mi, today, cfg)
+    items.append(oil)
+
+    lines = [f"Jeep maintenance — based on {now_mi:,} mi read "
+             f"{mdate.isoformat()} ({age} days ago)"]
+    horizon = parse_date(cfg["horizon_end"])
+    if horizon is not None and today > horizon:
+        lines.append("Note: past the 2027 horizon — this system is due to retire.")
+    for status in ("DUE NOW", "DUE SOON"):
+        group = sorted((i for i in items if i.status == status),
+                       key=lambda i: i.name)
+        if group:
+            lines.append("")
+            lines.append("Due now:" if status == "DUE NOW" else "Due soon:")
+            lines += [f"- {i.name} — {'; '.join(i.reasons)}" for i in group]
+    if all(i.status == "OK" for i in items):
+        lines.append("")
+        lines.append("All quiet.")
+    todos = read_jeep_todos(cfg)
+    if todos:
+        lines.append("")
+        lines.append(f"Open Jeep todos ({len(todos)}):")
+        lines += [f"- {t}" for t in todos]
+    return "\n".join(lines)
+
+
+def anchor_writes(info_tab: str, info_rows: list, done_date: datetime.date,
+                  done_miles: int) -> tuple:
+    """Writes advancing the Info odometer anchor, plus a summary note.
+
+    The anchor only moves forward: work logged late, at an older mileage,
+    must not rewind it.
+    """
+    cells = {}
+    for i, r in enumerate(info_rows):
+        key = cell(r, 0).strip()
+        if key in ("Current mileage", "Mileage date"):
+            cells[key] = (i + 1, cell(r, 1).strip())
+    if len(cells) < 2:
+        raise JeepError("Info tab is missing a usable Current mileage / Mileage date")
+    cur_mi = parse_int(cells["Current mileage"][1])
+    cur_date = parse_date(cells["Mileage date"][1])
+    if cur_mi is None or cur_date is None:
+        raise JeepError("Info tab is missing a usable Current mileage / Mileage date")
+    if done_miles < cur_mi or (done_miles == cur_mi and done_date <= cur_date):
+        return [], f"Odometer anchor unchanged ({cur_mi:,} mi read {cur_date})"
+    writes = [(info_tab, f"B{cells['Current mileage'][0]}", [[str(done_miles)]]),
+              (info_tab, f"B{cells['Mileage date'][0]}",
+               [[done_date.isoformat()]])]
+    return writes, (f"Odometer anchor advanced to {done_miles:,} mi "
+                    f"({done_date.isoformat()})")
+
+
+def plan_log(other_tab: str, info_tab: str, other_rows: list, info_rows: list,
+             job: str, done_date: datetime.date, done_miles: int,
+             typ: str = None, int_mi: int = None, int_mo: int = None,
+             parts: str = "", actor: str = "Self",
+             location: str = "SF") -> tuple:
+    """Plan the sheet writes for logging completed work on the Other tab.
+
+    Returns (writes, summary): writes are (tab, A1 range, values) tuples.
+    Appends one actual row (Due cells blank); for a Scheduled job, rolls
+    the job's upcoming row to the new due date/mileage, appending an
+    upcoming row when the job has none. The Notes cell is always blank.
+    """
+    name = norm_job(job)
+    if not name:
+        raise JeepError("log needs a job name")
+    head = header_index(other_rows)
+    known_type = known_mi = known_mo = None
+    display = job
+    upcoming_row = None
+    for i, r in enumerate(other_rows[head + 1:], start=head + 1):
+        if norm_job(cell(r, COL_JOB)) != name:
+            continue
+        display = cell(r, COL_JOB)
+        known_type = known_type or cell(r, COL_TYPE).strip() or None
+        known_mi = known_mi or parse_int(cell(r, COL_INT_MI))
+        known_mo = known_mo or parse_interval_months(cell(r, COL_INT_MO))
+        if (cell(r, COL_TYPE).strip() == "Scheduled"
+                and parse_date(cell(r, COL_DATE)) is None
+                and parse_int(cell(r, COL_MILES)) is None):
+            upcoming_row = i + 1  # 0-based index -> 1-based sheet row
+    int_mi = int_mi if int_mi is not None else known_mi
+    int_mo = int_mo if int_mo is not None else known_mo
+    typ = typ or known_type or ("Scheduled" if (int_mi or int_mo) else "One-off")
+
+    next_row = len(other_rows) + 1
+    actual = ["", done_date.isoformat(), str(done_miles), "P", actor, location,
+              display, parts, "", typ,
+              str(int_mi) if int_mi else "", str(int_mo) if int_mo else "",
+              "", ""]
+    writes = [(other_tab, f"A{next_row}:N{next_row}", [actual])]
+    summary = [f"Logged {name} — {done_date.isoformat()} @ {done_miles:,} mi "
+               f"({typ})"]
+
+    if typ == "Scheduled":
+        due_mi = str(done_miles + int_mi) if int_mi else ""
+        due_date = add_months(done_date, int_mo).isoformat() if int_mo else ""
+        cells = [str(int_mi) if int_mi else "", str(int_mo) if int_mo else "",
+                 due_mi, due_date]
+        if upcoming_row is not None:
+            writes.append((other_tab, f"K{upcoming_row}:N{upcoming_row}",
+                           [cells]))
+        else:
+            row = ["", "", "", "P", "", "", display, "", "", "Scheduled",
+                   *cells]
+            writes.append((other_tab, f"A{next_row + 1}:N{next_row + 1}",
+                           [row]))
+        bits = ([f"{done_miles + int_mi:,} mi"] if int_mi else []) \
+            + ([add_months(done_date, int_mo).isoformat()] if int_mo else [])
+        summary.append(f"Next due for {name}: {' / '.join(bits)}")
+
+    extra, note = anchor_writes(info_tab, info_rows, done_date, done_miles)
+    writes += extra
+    summary.append(note)
+    return writes, summary
+
+
+def plan_oil_log(oil_tab: str, info_tab: str, oil_rows: list,
+                 info_rows: list, done_date: datetime.date, done_miles: int,
+                 oil: str = "", oil_filter: str = "") -> tuple:
+    """Plan the writes for an oil change: one row on the Oil Changes tab,
+    its Interval (mi) cell computed against the previous change, plus the
+    odometer anchor advance. The row lands directly under the last logged
+    change, above the tab's process notes."""
+    last_idx = None
+    for i, r in enumerate(oil_rows):
+        if (parse_date(cell(r, COL_DATE)) is not None
+                and parse_int(cell(r, COL_MILES)) is not None):
+            last_idx = i
+    if last_idx is None:
+        raise JeepError("Oil Changes tab has no usable oil change row")
+    _, last_mi = read_last_oil(oil_rows)
+    row_no = last_idx + 2  # 0-based index -> the sheet row after it
+    row = ["", done_date.isoformat(), str(done_miles),
+           str(done_miles - last_mi), "P", "P", "SF", oil, oil_filter, "", ""]
+    writes = [(oil_tab, f"A{row_no}:K{row_no}", [row])]
+    summary = [f"Logged Engine Oil — {done_date.isoformat()} @ "
+               f"{done_miles:,} mi (interval {done_miles - last_mi:,} mi)"]
+    extra, note = anchor_writes(info_tab, info_rows, done_date, done_miles)
+    writes += extra
+    summary.append(note)
+    return writes, summary
+
+
+def cmd_log(cfg: dict, args) -> str:
+    done_date = parse_date(args.date)
+    if done_date is None:
+        raise JeepError(f"unusable --date: {args.date!r} (want YYYY-MM-DD)")
+    info_rows = sheet_values(cfg, cfg["info_tab"])
+    if norm_job(args.job).lower() in OIL_JOBS:
+        writes, summary = plan_oil_log(
+            cfg["oil_tab"], cfg["info_tab"],
+            sheet_values(cfg, cfg["oil_tab"]), info_rows,
+            done_date, args.miles, oil=args.oil, oil_filter=args.filter)
+    else:
+        writes, summary = plan_log(
+            cfg["other_tab"], cfg["info_tab"],
+            sheet_values(cfg, cfg["other_tab"]), info_rows,
+            args.job, done_date, args.miles, typ=args.type,
+            int_mi=args.interval_mi, int_mo=args.interval_mo,
+            parts=args.parts, actor=args.actor, location=args.location)
+    if args.dry_run:
+        return "\n".join(["Dry run — no writes made.",
+                          *[f"{tab}!{rng} <- {vals}" for tab, rng, vals in writes],
+                          *summary])
+    for tab, rng, vals in writes:
+        sheet_update(cfg, tab, rng, vals)
+    return "\n".join(summary)
+
+
+def main(argv: list) -> int:
+    parser = argparse.ArgumentParser(prog="jeep-maintenance")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("check")
+    lp = sub.add_parser("log")
+    lp.add_argument("--job", required=True)
+    lp.add_argument("--date", required=True, help="date done, YYYY-MM-DD")
+    lp.add_argument("--miles", required=True, type=int,
+                    help="odometer mileage when the work was done")
+    lp.add_argument("--type", choices=["Scheduled", "One-off"])
+    lp.add_argument("--interval-mi", type=int)
+    lp.add_argument("--interval-mo", type=int)
+    lp.add_argument("--parts", default="")
+    lp.add_argument("--actor", default="Self")
+    lp.add_argument("--location", default="SF")
+    lp.add_argument("--oil", default="", help="oil used (Engine Oil logs)")
+    lp.add_argument("--filter", default="",
+                    help="filter used (Engine Oil logs)")
+    lp.add_argument("--dry-run", action="store_true",
+                    help="print the planned writes without applying them")
+    args = parser.parse_args(argv)
+    cfg = load_config()
+    try:
+        print(cmd_check(cfg) if args.cmd == "check" else cmd_log(cfg, args))
+    except JeepError as e:
+        print(f"jeep-maintenance: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

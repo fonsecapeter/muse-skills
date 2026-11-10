@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Query a Notion database through the official Notion connector (MCP).
+
+Other skills call this CLI instead of reimplementing Notion access.
+
+Usage:
+    notion-query <database-id | collection-url> "<sql>"
+
+Prints the `results` array as JSON. Database UUIDs (dashed or not) are
+resolved to collection URLs via notion-fetch; the mapping is cached in
+the skill dir so later runs skip the lookup.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CACHE_PATH = os.path.join(SKILL_DIR, "bin", ".collection-cache.json")
+ROW_LIMIT = 1000
+
+
+def run_cli(*args):
+    proc = subprocess.run(["notion-cli", *args], capture_output=True,
+                          text=True, timeout=120)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            (proc.stderr.strip() or proc.stdout.strip())[-300:]
+            or "notion-cli failed")
+    return proc.stdout
+
+
+def mcp_result(stdout):
+    """Unwrap notion-cli call-tool output -> parsed result payload."""
+    outer = json.loads(stdout)
+    content = outer.get("content") or []
+    if not content:
+        raise RuntimeError("empty MCP response")
+    payload = json.loads(content[0].get("text", "{}"))
+    if isinstance(payload, dict) and payload.get("name") == "APIResponseError":
+        raise RuntimeError(payload.get("message", "MCP error")[:200])
+    return payload
+
+
+def load_cache():
+    try:
+        with open(CACHE_PATH) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_cache(cache):
+    try:
+        with open(CACHE_PATH, "w") as f:
+            json.dump(cache, f)
+    except OSError:
+        pass
+
+
+def resolve_collection(db_ref):
+    if db_ref.startswith("collection://"):
+        return db_ref
+    norm = db_ref.replace("-", "").lower()
+    cache = load_cache()
+    if norm in cache:
+        return cache[norm]
+    out = run_cli("call-tool", "--name", "notion-fetch",
+                  "--arguments-json", json.dumps({"id": db_ref}))
+    text = json.dumps(mcp_result(out))
+    m = re.search(r"collection://[0-9a-f-]{36}", text)
+    if not m:
+        raise RuntimeError("no data source found for " + db_ref)
+    cache[norm] = m.group(0)
+    save_cache(cache)
+    return m.group(0)
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("usage: notion-query <database-id | collection-url> \"<sql>\"",
+              file=sys.stderr)
+        sys.exit(2)
+    collection = resolve_collection(sys.argv[1])
+    sql = sys.argv[2].replace("{collection}", collection)
+    out = run_cli("call-tool", "--name", "notion-query-data-sources",
+                  "--arguments-json",
+                  json.dumps({"data": {"data_source_urls": [collection],
+                                       "query": sql}}))
+    payload = mcp_result(out)
+    results = payload.get("results", [])
+    print(json.dumps(results))
+
+
+if __name__ == "__main__":
+    main()

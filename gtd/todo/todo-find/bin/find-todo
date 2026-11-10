@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+# find-todo — search Peter's Notion TODO database by title, trying
+# several phrasings in one call. Prints a JSON list of matches.
+# Usage: bin/find-todo <term> [term ...]
+# Fails loudly (stderr + non-zero exit) on any Notion failure.
+import json, os, re, subprocess, sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    cfg = json.loads(re.search(r"```json\n(.*?)```",
+        open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+except Exception as e:
+    print(f"find-todo: cannot load config.md: {e}", file=sys.stderr)
+    sys.exit(1)
+API = os.path.expanduser(cfg["notion_api"])
+DB = cfg["todo_database_id"]
+
+def notion(method, path, data=None):
+    args = [API, method, path]
+    if data is not None:
+        args += ["--data", json.dumps(data)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"find-todo: notion-api failed: {method} {path}: "
+              f"{r.stderr.strip()[:300]}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        print(f"find-todo: unparseable response: {r.stdout[:200]}",
+              file=sys.stderr)
+        sys.exit(1)
+
+if len(sys.argv) < 2:
+    print("usage: find-todo <term> [term ...]", file=sys.stderr)
+    sys.exit(2)
+
+found = {}
+for term in sys.argv[1:]:
+    d = notion("POST", f"/databases/{DB}/query",
+               {"filter": {"property": "Task",
+                           "title": {"contains": term}},
+                "page_size": 50})
+    for page in d.get("results", []):
+        p = page.get("properties", {})
+        title = "".join(t.get("plain_text", "")
+                        for t in p.get("Task", {}).get("title", []))
+        status = (p.get("Status", {}).get("status") or {}).get("name")
+        due = (p.get("Due", {}).get("date") or {}).get("start")
+        found[page["id"]] = {"id": page["id"], "title": title,
+                             "status": status, "due": due,
+                             "url": page.get("url")}
+print(json.dumps(list(found.values()), indent=1))
