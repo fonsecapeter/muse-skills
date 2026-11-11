@@ -1,6 +1,6 @@
 # Sweep Learnings
 
-The nightly sweep: implements pending skill learnings, audits the
+The sweep: implements pending skill learnings, audits the
 skills against `CONVENTIONS.md` (in this directory), and works the
 central learning log. Learnings are recorded by the record-learning
 skill; this skill consumes them.

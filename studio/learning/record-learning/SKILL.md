@@ -1,8 +1,8 @@
 # Record Learning
 
 Records a learning for a custom skill the moment it surfaces, so
-the nightly sweep (the sweep-learnings skill) can implement it
-later. One learning per call:
+the sweep (the sweep-learnings skill) can implement it later. One
+learning per call:
 
 `bin/record-learning <skill-name> "<learning>"`
 
@@ -22,7 +22,7 @@ target `cross-skill`.
   to save the learning about the Notion checklist miss, though it
   was obvious the moment he corrected it.
 - Each entry must stand on its own: state the rule AND one line of
-  evidence (the incident, correction, or date) so the nightly sweep
+  evidence (the incident, correction, or date) so the sweep
   can implement it cold, without the session that produced it. A
   bare conclusion ("watch whether X") is not implementable — write
   what to do differently instead.
@@ -38,7 +38,7 @@ target `cross-skill`.
   no per-skill queue files to keep in sync, and parallel sessions
   just append lines.
 - The log only holds what's still pending. Whoever implements an
-  entry — the nightly sweep, or any session editing that skill —
+  entry — the sweep, or any session editing that skill —
   removes its line. There is no separate learned log: what changed
   in response is recorded by the repo itself, in the diff and its
   description.

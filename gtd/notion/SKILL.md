@@ -1,6 +1,6 @@
 ---
 name: "notion"
-description: "Use Notion when the user asks for Notion or this provider's API."
+description: "Access Peter's Notion through its API"
 ---
 
 # Notion

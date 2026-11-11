@@ -1,6 +1,6 @@
 ---
 name: "studio1way-add-project"
-description: "Add a new art project to Peter's Studio 1Way website: run the intake with Peter, then delegate the mechanics to the repo's own add-project skill in the studio1way repo. Use whenever Peter wants to add a piece to the site, sends photos of new work for the portfolio, or says 'put this on the website'."
+description: "Add a project to Studio 1Way"
 ---
 
 # Add a Studio 1Way project

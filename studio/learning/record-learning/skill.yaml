@@ -1,6 +1,6 @@
 name: record_learning
 title: Record Learning
-description: Record a skill learning the moment it surfaces: appends it, tagged with its skill, to the one central learning log for the nightly sweep to implement.
+description: Record a skill learning
 include_in_prompt: true
 availability:
   confidential_vm: true

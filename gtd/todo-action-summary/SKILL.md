@@ -2,8 +2,8 @@
 
 # Todo Action Summary
 
-Monday is summary day. Two halves: the full open list, then your
-judgment on top of it. Read-only.
+Two halves: the full open list, then your judgment on top of it.
+Read-only.
 
 ## Steps
 

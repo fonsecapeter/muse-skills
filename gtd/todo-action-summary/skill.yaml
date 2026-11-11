@@ -1,6 +1,6 @@
 name: todo_action_summary
 title: Todo action summary
-description: 'Monday-morning action summary for Peter: deterministic full list of open Notion TODOs plus agentic flags for items not getting the attention they should. Read-only.'
+description: 'Summarize open TODOs, flagging what needs attention'
 include_in_prompt: true
 availability:
   confidential_vm: true
