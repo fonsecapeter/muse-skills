@@ -30,6 +30,10 @@ substitute for following the conventions.
   trusting the chain's exit line. Evidence: the GTD bucket copy chain
   lost all its rename seds to a failed `rm` that way, caught only by
   a closing grep.
+- **Don't batch edits with a dependent git step.** Run file edits and
+  any git step that depends on them (add, commit, amend,
+  rebase --continue) in separate blocks; check `git status` before
+  amending.
 - **Duplicate CLI copies stay in sync.** If the same `bin/` CLI exists
   in more than one place (across skills, or a skill and a
   custom-connector), a fix to one copy is incomplete until all copies
