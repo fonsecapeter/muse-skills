@@ -17,8 +17,19 @@ never hardcode these in scripts or prose.
   "sheet_columns": ["invoice_id", "claim_id", "treatment_date", "submitted_date", "status", "cost", "amount_paid", "location", "what", "notes"],
   "claim_email_sender": "missionpethospital@gmail.com",
   "nationwide_claims_url": "https://my.petinsurance.com/login",
-  "plan": "Major Medical Plan + Pet Wellness Plus Rider",
+  "plan": "Modular Pet Insurance (from 2026-03-24 renewal; Major Medical Plan + Pet Wellness Plus Rider before)",
+  "plan_policy_number": "C-2560724",
+  "plan_renewal_date": "2026-03-24",
   "annual_deductible": 250,
+  "medical_coinsurance": 0.5,
+  "illness_limit_per_year": 5000,
+  "wellness_level": "Level 1",
+  "wellness_prevention_cap_per_year": 100,
+  "wellness_exam_cap_per_year": 80,
+  "wellness_vaccines_cap_per_year": 80,
+  "filing_deadline_months": 12,
+  "prompt_notice_days": 90,
+  "policy_form": "VS-G-15-CA",
   "timezone": "America/Los_Angeles",
   "filename_pattern": "invoice_yyyy_mm_dd_<invoice_id>.pdf",
   "status_values": ["todo", "submitted", "processed"]
@@ -26,6 +37,15 @@ never hardcode these in scripts or prose.
 ```
 
 Notes:
+- `plan` (set 2026-11-12, from the declarations packet
+  `policy_declarations_2026_02_25.pdf` in the Drive Vet folder):
+  policy C-2560724 moved from Major Medical to Modular Pet
+  Insurance at the 2026-03-24 renewal. Estimates split by treatment
+  date against the renewal: before it, the old benefit schedule;
+  from it, 50% medical co-insurance after the $250 deductible,
+  $5,000/yr illness limit, Wellness Level 1. Filing window (form
+  VS-G-15-CA §14): prompt notice within 90 days, hard cutoff at
+  12 months after first treatment.
 - `filename_pattern`: `invoice_yyyy_mm_dd_<invoice_id>.pdf` — date and
   invoice number, per Peter's `invoice_processing` doc (set 2026-11-05;
   all existing PDFs were renamed to match in the restructure).
