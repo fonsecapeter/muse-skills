@@ -4,12 +4,18 @@ Records a learning for a custom skill the moment it surfaces, so
 the sweep (the sweep-learnings skill) can implement it later. One
 learning per call:
 
-`bin/record-learning <skill-name> "<learning>"`
+`bin/record-learning <skill-name> '<learning>'`
 
 Appends a dated entry to the central learning log, tagged with
 the skill it belongs to. Learnings that span skills, or belong to
 no single skill, are tagged `cross-skill` instead — same command,
 target `cross-skill`.
+
+**Quote with single quotes.** A learning containing a `$` amount
+recorded inside double quotes loses the figure to shell expansion
+(`$250` becomes `50`) — the 2026-11-12 simi-claims entry had to be
+reconstructed from the declarations packet for exactly this reason.
+Single quotes keep every character literal.
 
 ## What to record
 
