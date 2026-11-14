@@ -9,9 +9,9 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
   (`/opt/muse/skills/skill-creator`) owns the mechanics of authoring a
   skill — structure, naming, frontmatter. Read it and follow it.
 - **Peter's conventions**
-  (`~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`) apply **on
-  top of** the built-in flow and must still be followed — while drafting
-  and while editing, every version complies.
+  (`~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`) apply on
+  top of the built-in flow — while drafting and while editing, every
+  version complies.
 
 ## Steps
 
@@ -22,12 +22,12 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
    `~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`: playbook in
    SKILL.md, machine values in `config.md`, deterministic work scripted
    as `bin/` CLIs wherever possible, crons as one-liners, declared
-   Dependencies, record-learning deferral. Apply throughout drafting — not
-   as a cleanup pass at the end. Author in Muse's format:
+   Dependencies, record-learning deferral. Apply throughout drafting.
+   Author in Muse's format:
    `skill.yaml` carries the name, title, and description — the
    description is the trigger text Muse matches on, so
-   when-it-applies goes there, not in the body. Keep the body lean:
-   instructions only, no prose describing the skill itself.
+   when-it-applies goes there. Keep the body lean:
+   instructions only.
 3. **Draft the skill in the repo**, in the bucket it belongs to:
    `~/projects/muse-skills/<bucket>/<name>/` (bare name, no prefix).
    Add its entry to the repo's `manifest.json` roster.
@@ -37,6 +37,21 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
    skill must appear with its Dependencies declared and no warnings.
 
 From here the sweep audits the new skill against CONVENTIONS.md.
+
+## Authoring standards
+
+Peter's reviews of this skill set how new skills read:
+
+- **Cadence lives in cron definitions.** Skill names and descriptions
+  name the job — the cron carries the schedule.
+- **Descriptions are short usage matchers.** The `skill.yaml` and
+  SKILL.md frontmatter descriptions name the job in a few words, for
+  example 'Find a specific TODO'.
+- **Plain statements.** Steps and rules read as plain statements.
+- **Positive framing.** State what to do and what happens.
+- **Code-writing best practices.** One source of truth per fact, one
+  job per skill, config separate from mechanism. Playbooks state the
+  mechanism and point at `config.md` for values.
 
 ## Learning loop
 

@@ -100,11 +100,27 @@ in this skill runs them against real invoice fixtures.
   cardiology, surgery, diagnostics). Skip it for simple prescription fills
   and vaccine-only visits.
 - **Duplicates.** Same bytes = same claim. Report and skip.
-- **Plan knowledge.** Simi is on the Major Medical Plan + Pet Wellness Plus
-  rider, $250 annual deductible. It's a benefit-schedule plan: allowances
-  are per condition/procedure per policy year, reset ~Mar/Apr — no monthly
-  caps. Prescription meds bill against the condition's allowance; preventive
-  (flea/tick/heartworm) against the wellness rider's annual limit.
+- **Plan knowledge.** Policy C-2560724. At the 2026-03-24 renewal it
+  moved from the Major Medical Plan + Pet Wellness Plus rider
+  (benefit schedule) to Modular Pet Insurance — so split every
+  estimate by treatment date against the renewal:
+  - *Before 2026-03-24 (Major Medical):* benefit-schedule plan:
+    allowances are per condition/procedure per policy year, reset
+    ~Mar/Apr — no monthly caps. $250 deductible once per policy
+    year. Prescription meds bill against the condition's allowance;
+    preventive (flea/tick/heartworm) against the wellness rider's
+    annual limit ($75/yr prevention, $75/yr vaccinations).
+    Echocardiogram allowance $440/yr. Vetmedin pays in full under
+    Valvular Heart Disease, no cap in sight; minor diagnosis lines
+    pay at billed.
+  - *From 2026-03-24 (Modular):* medical pays 50% after a $250
+    per-term deductible; illness limit $5,000 per year. Wellness
+    Level 1 at 100%: prevention $100/yr, exam $80, vaccines $80.
+  - **Filing window** (form VS-G-15-CA §14): prompt notice within
+    90 days of first treatment; a claim submitted more than 12
+    months after the first treatment date will not be covered.
+  - Declarations packet: `policy_declarations_2026_02_25.pdf` in
+    the Drive Vet folder.
 
 ## Standing rules
 

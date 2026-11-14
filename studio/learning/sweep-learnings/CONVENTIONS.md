@@ -21,15 +21,11 @@ substitute for following the conventions.
 - **CLIs fail loudly.** Every `bin/` CLI exits non-zero with a stderr
   message on any failure, and validates its results (return code + parsed
   fields) before claiming success. Never print success from an
-  unvalidated parse or an error body. Silent failure is the worst kind —
-  evidence: four simi-claims incidents of silent failure (Oct 8–9, 2026)
-  hid a full cycle of bad data before anyone noticed.
+  unvalidated parse or an error body.
 - **Verify chained shell edits landed.** In a chained shell command,
   one failable step silently aborts every later step in the `&&`
   chain — verify each edit landed (grep the result) instead of
-  trusting the chain's exit line. Evidence: the GTD bucket copy chain
-  lost all its rename seds to a failed `rm` that way, caught only by
-  a closing grep.
+  trusting the chain's exit line.
 - **Don't batch edits with a dependent git step.** Run file edits and
   any git step that depends on them (add, commit, amend,
   rebase --continue) in separate blocks; check `git status` before
@@ -38,9 +34,7 @@ substitute for following the conventions.
   in more than one place (across skills, or a skill and a
   custom-connector), a fix to one copy is incomplete until all copies
   match or defer to the canonical one. The nightly sweep audit diffs
-  duplicate copies. Evidence: the 2026-10-14 notion-api fix repaired
-  only the canonical skill copy, leaving the connector copy on a
-  deleted path until that night's sweep found and fixed it.
+  duplicate copies.
 - **Crons are one-liners.** A cron body invokes the skill
   (`Run the <name> skill: follow ~/workspace/custom-skills/<name>/SKILL.md ...`).
   The playbook lives in the skill, never in the cron.
@@ -50,10 +44,6 @@ substitute for following the conventions.
 - **State only what has been verified.** A claim about how a service
   or site behaves carries the observation behind it, not lore passed
   between drafts. If it hasn't been checked, it isn't stated as fact.
-  Evidence: the simi skills said Nationwide "blocks automated
-  browsers outright" for months; a live check (2026-11-07) showed the
-  page loads cleanly, and the only real observation was a bot check
-  after sign-in.
 - **Detail must serve the job.** History, incident narrative, and
   snapshot counts rot and bloat. The playbook carries what changes
   the agent's actions; the story of how a rule was learned lives in
@@ -108,13 +98,6 @@ substitute for following the conventions.
   (b) bind to an automatic, recognizable trigger or a deterministic
   check, not to recall. If there is no trigger, give it one (a CLI
   check, a named chat signal, a sweep audit) or expect it to miss.
-- Evidence: the completion-signal rule sat in notion fine print and
-  missed twice (2026-10-06 checkbook, 2026-10-13 Xfinity) until it
-  moved to the todo skill, keyed to a chat completion report; the
-  recording protocol existed but needed Peter to ask (2026-10-13)
-  until a correction from Peter was made its automatic trigger; the
-  simi silent failures (Oct 8–9, 2026) ended only when CLIs were made
-  to fail loudly and validate deterministically.
 
 ## Declarations
 
