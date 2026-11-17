@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+# check-idea — mark one date idea done in Peter's "Date Ideas"
+# Notion database: Status -> Done, Went -> today (America/Los_Angeles).
+# Usage: bin/check-idea "<name fragment>"
+# Re-reads the row to verify. Fails loudly (stderr + non-zero exit)
+# on zero or multiple matches, or if verification disagrees.
+import json, os, subprocess, sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    cfg = json.load(open(os.path.join(SKILL_DIR, "config.json")))
+except Exception as e:
+    print(f"check-idea: cannot load config.json: {e}", file=sys.stderr)
+    sys.exit(1)
+API = os.path.expanduser(cfg["notion_api"])
+DB_ID = cfg["database_id"]
+
+def fail(msg):
+    print(f"check-idea: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+def notion(method, path, data=None):
+    args = [API, method, path]
+    if data is not None:
+        args += ["--data", json.dumps(data)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"notion-api failed: {method} {path}: "
+             f"{r.stderr.strip()[:300]}")
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        fail(f"unparseable response: {r.stdout[:200]}")
+
+def title_of(page):
+    for v in page.get("properties", {}).values():
+        if v.get("type") == "title":
+            return "".join(t.get("plain_text", "")
+                           for t in v.get("title", []))
+    return ""
+
+def all_rows():
+    out, cursor = [], None
+    while True:
+        data = {"page_size": 100}
+        if cursor:
+            data["start_cursor"] = cursor
+        d = notion("POST", f"/databases/{DB_ID}/query", data)
+        out.extend(d.get("results", []))
+        if not d.get("has_more"):
+            return out
+        cursor = d.get("next_cursor")
+
+if len(sys.argv) != 2:
+    fail('usage: check-idea "<name fragment>"')
+needle = sys.argv[1].lower()
+matches = [r for r in all_rows() if needle in title_of(r).lower()]
+if not matches:
+    fail(f"no date idea matching {sys.argv[1]!r}")
+if len(matches) > 1:
+    print(f"check-idea: {len(matches)} rows match {sys.argv[1]!r}; "
+          "be more specific:", file=sys.stderr)
+    for r in matches:
+        print(f"  {r['id']} | {title_of(r)}", file=sys.stderr)
+    sys.exit(1)
+
+row = matches[0]
+today = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+notion("PATCH", f"/pages/{row['id']}",
+       {"properties": {"Status": {"status": {"name": "Done"}},
+                       "Went": {"date": {"start": today}}}})
+after = notion("GET", f"/pages/{row['id']}")
+props = after.get("properties", {})
+status = (props.get("Status", {}).get("status") or {}).get("name")
+went = (props.get("Went", {}).get("date") or {}).get("start")
+if status != "Done" or went != today:
+    fail(f"verification failed — status={status!r} went={went!r}, "
+         f"wanted Done / {today}")
+print(json.dumps({"done": title_of(after), "row_id": row["id"],
+                  "status": status, "went": went,
+                  "verified": True}, indent=1))

@@ -1,0 +1,10 @@
+name: date_idea_done
+title: Date Idea Done
+description: 'Mark a date idea done'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

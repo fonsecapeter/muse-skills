@@ -1,0 +1,10 @@
+name: date_idea_save
+title: Date Idea Save
+description: 'Save a date idea'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
