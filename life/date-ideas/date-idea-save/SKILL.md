@@ -24,15 +24,20 @@ to. Marking an idea done is the date-idea-done skill's job.
   ("nostalgic beach, restaurants and shopping"). Anything longer
   goes in the row's page body.
 - **Status** starts at `TODO`.
+- **Icon** (page icon): one emoji that fits the idea, in the spirit
+  of the existing rows: 🐋 whale watching tour, ♨️ piedmont springs
+  spa, 🍷 hess. Pick the most specific one that reads at a glance.
 
 ## Save
 
-1. Run `bin/add-idea "<name>" "<url>"` in this skill's directory,
-   with `--type "<Type>"` when the default does not fit and
-   `--notes "<note>"` when there is a trailing note. The URL can be
-   omitted for an idea with no link. The CLI refuses a name that is
-   already in the database and verifies the new row before
-   printing it.
+1. Choose an emoji for the idea, then run
+   `bin/add-idea "<name>" "<url>" --emoji "<emoji>"` in this skill's
+   directory, with `--type "<Type>"` when the default does not fit
+   and `--notes "<note>"` when there is a trailing note. The URL can
+   be omitted for an idea with no link; the emoji cannot — the CLI
+   refuses to save without one. The CLI also refuses a name that is
+   already in the database and verifies the new row, icon included,
+   before printing it.
 2. Report back with the name and type, one line.
 
 ## Dependencies

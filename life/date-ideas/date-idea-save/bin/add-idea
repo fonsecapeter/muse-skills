@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # add-idea — save one date idea as a row in Peter's "Date Ideas"
 # Notion database.
-# Usage: bin/add-idea "<name>" ["<url>"] [--type "<Type>"]
-#        [--notes "<note>"]
-# New rows start at Status TODO. Re-reads the created row to verify
-# before printing success. Fails loudly (stderr + non-zero exit) on
-# duplicates or mismatches.
+# Usage: bin/add-idea "<name>" ["<url>"] --emoji "<emoji>"
+#        [--type "<Type>"] [--notes "<note>"]
+# New rows start at Status TODO and carry the given emoji as their
+# page icon. Re-reads the created row to verify before printing
+# success. Fails loudly (stderr + non-zero exit) on duplicates,
+# a missing emoji, or mismatches.
 import json, os, subprocess, sys
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -69,21 +70,26 @@ def prop(page, name):
 argv = sys.argv[1:]
 type_ = DEFAULT_TYPE
 notes = None
-for flag in ("--type", "--notes"):
+emoji = None
+for flag in ("--type", "--notes", "--emoji"):
     if flag in argv:
         i = argv.index(flag)
         if i + 1 >= len(argv):
             fail(f"{flag} needs a value")
         if flag == "--type":
             type_ = argv[i + 1]
-        else:
+        elif flag == "--notes":
             notes = argv[i + 1]
+        else:
+            emoji = argv[i + 1]
         argv = argv[:i] + argv[i + 2:]
 if type_ not in TYPES:
     fail(f"type {type_!r} is not one of {TYPES}")
+if not emoji:
+    fail("--emoji is required: pick one emoji that fits the idea")
 if len(argv) not in (1, 2):
-    fail('usage: add-idea "<name>" ["<url>"] [--type "<Type>"] '
-         '[--notes "<note>"]')
+    fail('usage: add-idea "<name>" ["<url>"] --emoji "<emoji>" '
+         '[--type "<Type>"] [--notes "<note>"]')
 name = argv[0]
 url = argv[1] if len(argv) == 2 else None
 if url is not None and not url.startswith("http"):
@@ -104,15 +110,19 @@ if notes:
     props["Notes"] = {"rich_text": [{"type": "text",
                                      "text": {"content": notes}}]}
 created = notion("POST", "/pages",
-                 {"parent": {"database_id": DB_ID}, "properties": props})
+                 {"parent": {"database_id": DB_ID}, "properties": props,
+                  "icon": {"type": "emoji", "emoji": emoji}})
 if created.get("object") == "error":
     fail(f"create failed: {created.get('message')}")
 row = notion("GET", f"/pages/{created['id']}")
+icon = (row.get("icon") or {}).get("emoji")
 if title_of(row) != name or prop(row, "Status") != "TODO" \
-        or prop(row, "Type") != type_ or prop(row, "Link") != url:
+        or prop(row, "Type") != type_ or prop(row, "Link") != url \
+        or icon != emoji:
     fail(f"verification failed for new row {created['id']}: "
          f"title={title_of(row)!r} status={prop(row, 'Status')!r} "
-         f"type={prop(row, 'Type')!r} link={prop(row, 'Link')!r}")
+         f"type={prop(row, 'Type')!r} link={prop(row, 'Link')!r} "
+         f"icon={icon!r}")
 print(json.dumps({"added": name, "url": url, "type": type_,
-                  "notes": notes, "row_id": row["id"],
+                  "notes": notes, "emoji": emoji, "row_id": row["id"],
                   "verified": True}, indent=1))
