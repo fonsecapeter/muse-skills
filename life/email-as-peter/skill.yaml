@@ -1,0 +1,10 @@
+name: email_as_peter
+title: Email as Peter
+description: 'Write email in Peter''s voice'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

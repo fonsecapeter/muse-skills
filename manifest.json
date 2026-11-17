@@ -100,6 +100,10 @@
       "bucket": "life"
     },
     {
+      "name": "email-as-peter",
+      "bucket": "life"
+    },
+    {
       "name": "jeep-check",
       "bucket": "life",
       "path": "life/jeep/jeep-check"
