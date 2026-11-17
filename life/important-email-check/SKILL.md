@@ -29,6 +29,12 @@ mail.
      GEICO/autopays, Simi claims, Palermo) that moves it forward
    - When a snippet is ambiguous, read the message
      (`hatch_gws_cli gmail +read --id <id>`) before deciding.
+   - Verify a time-bound flag before drafting the digest: check the
+     message's own sent date and the live calendar. A scan-window hit
+     can mislead — a Sunday 9:30 AM class is not Monday 7:30 AM — and
+     an invite the calendar already moved is not the original date.
+     If the message's own date or the calendar contradicts the flag,
+     drop or correct it.
    - Newsletters, receipts for known purchases, marketing, and routine
      confirmations of things already handled are NOT important.
 3. **Deliver the digest in chat.** Peter has ADHD and dyslexia: bullets,
