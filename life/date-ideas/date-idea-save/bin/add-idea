@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+# add-idea — save one date idea as a row in Peter's "Date Ideas"
+# Notion database.
+# Usage: bin/add-idea "<name>" ["<url>"] [--type "<Type>"]
+#        [--notes "<note>"]
+# New rows start at Status TODO. Re-reads the created row to verify
+# before printing success. Fails loudly (stderr + non-zero exit) on
+# duplicates or mismatches.
+import json, os, subprocess, sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    cfg = json.load(open(os.path.join(SKILL_DIR, "config.json")))
+except Exception as e:
+    print(f"add-idea: cannot load config.json: {e}", file=sys.stderr)
+    sys.exit(1)
+API = os.path.expanduser(cfg["notion_api"])
+DB_ID = cfg["database_id"]
+DEFAULT_TYPE = cfg.get("default_type", "Day")
+TYPES = ["Day", "Weekend away", "Wineries"]
+
+def fail(msg):
+    print(f"add-idea: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+def notion(method, path, data=None):
+    args = [API, method, path]
+    if data is not None:
+        args += ["--data", json.dumps(data)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"notion-api failed: {method} {path}: "
+             f"{r.stderr.strip()[:300]}")
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        fail(f"unparseable response: {r.stdout[:200]}")
+
+def title_of(page):
+    for v in page.get("properties", {}).values():
+        if v.get("type") == "title":
+            return "".join(t.get("plain_text", "")
+                           for t in v.get("title", []))
+    return ""
+
+def all_rows():
+    out, cursor = [], None
+    while True:
+        data = {"page_size": 100}
+        if cursor:
+            data["start_cursor"] = cursor
+        d = notion("POST", f"/databases/{DB_ID}/query", data)
+        out.extend(d.get("results", []))
+        if not d.get("has_more"):
+            return out
+        cursor = d.get("next_cursor")
+
+def prop(page, name):
+    v = page.get("properties", {}).get(name, {})
+    t = v.get("type")
+    if t == "status":
+        return (v.get("status") or {}).get("name")
+    if t == "select":
+        return (v.get("select") or {}).get("name")
+    if t == "url":
+        return v.get("url")
+    return None
+
+argv = sys.argv[1:]
+type_ = DEFAULT_TYPE
+notes = None
+for flag in ("--type", "--notes"):
+    if flag in argv:
+        i = argv.index(flag)
+        if i + 1 >= len(argv):
+            fail(f"{flag} needs a value")
+        if flag == "--type":
+            type_ = argv[i + 1]
+        else:
+            notes = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+if type_ not in TYPES:
+    fail(f"type {type_!r} is not one of {TYPES}")
+if len(argv) not in (1, 2):
+    fail('usage: add-idea "<name>" ["<url>"] [--type "<Type>"] '
+         '[--notes "<note>"]')
+name = argv[0]
+url = argv[1] if len(argv) == 2 else None
+if url is not None and not url.startswith("http"):
+    fail(f"url does not look like a link: {url!r}")
+
+for row in all_rows():
+    if title_of(row).strip().lower() == name.strip().lower():
+        fail(f"{name!r} is already in the database (row {row['id']})")
+
+props = {
+    "Idea": {"title": [{"type": "text", "text": {"content": name}}]},
+    "Status": {"status": {"name": "TODO"}},
+    "Type": {"select": {"name": type_}},
+}
+if url:
+    props["Link"] = {"url": url}
+if notes:
+    props["Notes"] = {"rich_text": [{"type": "text",
+                                     "text": {"content": notes}}]}
+created = notion("POST", "/pages",
+                 {"parent": {"database_id": DB_ID}, "properties": props})
+if created.get("object") == "error":
+    fail(f"create failed: {created.get('message')}")
+row = notion("GET", f"/pages/{created['id']}")
+if title_of(row) != name or prop(row, "Status") != "TODO" \
+        or prop(row, "Type") != type_ or prop(row, "Link") != url:
+    fail(f"verification failed for new row {created['id']}: "
+         f"title={title_of(row)!r} status={prop(row, 'Status')!r} "
+         f"type={prop(row, 'Type')!r} link={prop(row, 'Link')!r}")
+print(json.dumps({"added": name, "url": url, "type": type_,
+                  "notes": notes, "row_id": row["id"],
+                  "verified": True}, indent=1))

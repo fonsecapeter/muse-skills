@@ -113,6 +113,16 @@
       "name": "jeep-schedule",
       "bucket": "life",
       "path": "life/jeep/jeep-schedule"
+    },
+    {
+      "name": "date-idea-save",
+      "bucket": "life",
+      "path": "life/date-ideas/date-idea-save"
+    },
+    {
+      "name": "date-idea-done",
+      "bucket": "life",
+      "path": "life/date-ideas/date-idea-done"
     }
   ]
 }
