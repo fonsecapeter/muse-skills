@@ -85,6 +85,37 @@ class LinkSkillsTest(CliTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("simi-claims", result.stdout)
 
+    def test_check_reports_a_symlink_not_in_the_roster(self):
+        self.run_link()
+        (self.dest / "stale-skill").symlink_to(
+            self.repo / "simi" / "simi-claims")
+        result = self.run_link("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("extra link", result.stdout)
+        self.assertIn("stale-skill", result.stdout)
+
+    def test_check_reports_a_dangling_symlink_not_in_the_roster(self):
+        (self.dest / "ghost-skill").symlink_to(
+            self.repo / "simi" / "no-such-skill")
+        result = self.run_link("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("extra link", result.stdout)
+        self.assertIn("ghost-skill", result.stdout)
+
+    def test_check_ignores_a_real_directory_not_in_the_roster(self):
+        self.run_link()
+        (self.dest / "local-only").mkdir()
+        result = self.run_link("--check")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_check_ignores_a_symlink_to_a_file_not_in_the_roster(self):
+        self.run_link()
+        doc = self.repo / "simi" / "shared-doc.md"
+        doc.write_text("# shared\n")
+        (self.dest / "SHARED.md").symlink_to(doc)
+        result = self.run_link("--check")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
     def test_refuses_to_replace_a_real_directory_and_leaves_it_untouched(self):
         real = self.dest / "simi-claims"
         real.mkdir()

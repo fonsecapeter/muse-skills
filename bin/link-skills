@@ -10,10 +10,12 @@ Usage:
     bin/link-skills [--check] [--repo PATH] [--dest PATH]
                     [--manifest PATH]
 
---check reports drift and changes nothing. Without it, missing
-links are created and links pointing at the wrong source are
-repaired. A real file or directory sitting where a link belongs is
-never replaced: the run fails before changing anything.
+--check reports drift and changes nothing. It also reports links
+in the destination that the roster does not list, including
+dangling ones. Without it, missing links are created and links
+pointing at the wrong source are repaired. A real file or directory
+sitting where a link belongs is never replaced: the run fails
+before changing anything.
 """
 from __future__ import annotations
 
@@ -102,6 +104,30 @@ def check(links: list[Link]) -> list[str]:
     ]
 
 
+def extra_links(roster_names: set[str], dest: Path) -> list[str]:
+    """Links in dest that the roster does not list, dangling or not.
+
+    link-skills only creates roster links, never prunes, so a stale
+    link — a skill renamed, or one linked from an unmerged branch —
+    would otherwise sit unnoticed: shell globs skip dangling
+    symlinks, so audits miss the skill entirely. Real directories
+    and files are not links and are left alone, and neither is a
+    link to a file (a shared doc like SYSTEM.md): skills are
+    directories, so only links to a directory — or to nothing,
+    dangling — can be stale skill links.
+    """
+    if not dest.is_dir():
+        return []
+    extras = []
+    for entry in sorted(dest.iterdir(), key=lambda p: p.name):
+        if not entry.is_symlink() or entry.name in roster_names:
+            continue
+        if entry.exists() and not entry.is_dir():
+            continue
+        extras.append(f"extra link: {entry} -> {entry.readlink()}")
+    return extras
+
+
 def apply(links: list[Link]) -> list[str]:
     states = {link: link_state(link) for link in links}
     fatal = [
@@ -145,9 +171,11 @@ def main(argv: list[str] | None = None) -> int:
     dest = args.dest.expanduser().resolve()
     manifest = args.manifest or repo / "manifest.json"
     try:
-        links = expected_links(load_roster(manifest), repo, dest)
+        roster = load_roster(manifest)
+        links = expected_links(roster, repo, dest)
         if args.check:
-            problems = check(links)
+            problems = check(links) + extra_links(
+                {entry.name for entry in roster}, dest)
             for problem in problems:
                 print(problem)
             if not problems:

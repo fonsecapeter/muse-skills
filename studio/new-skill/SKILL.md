@@ -52,6 +52,10 @@ Peter's reviews of this skill set how new skills read:
 - **Code-writing best practices.** One source of truth per fact, one
   job per skill, config separate from mechanism. Playbooks state the
   mechanism and point at `config.md` for values.
+- **Split a two-job ask into grouped single-job skills.** When Peter
+  asks for one skill covering two jobs, build grouped single-job
+  skills under a shared group directory — the todo trio and haircut
+  group pattern — not one combined skill with subcommands.
 
 ## Learning loop
 
