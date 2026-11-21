@@ -25,6 +25,8 @@ tooling parses the enums from the Java models, so it cannot drift.
 - **Draft alt text and image names from the photos** (actually look at
   them) and include the drafts in the ask message; he approves or
   edits.
+- **Prefer images sent over email not muse chat.** Chat uploads are compressed
+  in transit, but email keeps the original resolution
 - **Hand over via the PR**: the project JSON plus CI's preview
   screenshots on the PR are his review surface — local dev-server
   previews don't work from this machine.
