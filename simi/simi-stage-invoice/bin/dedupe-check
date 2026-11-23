@@ -4,7 +4,7 @@
 # A name collision with identical size is almost certainly a duplicate.
 set -euo pipefail
 PDF="$1"
-SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SKILL_DIR="$HOME/workspace/custom-skills/simi-claims"
 export SKILL_DIR PDF
 python3 <<'EOF'
 import json, os, re, hashlib, subprocess, sys

@@ -1,0 +1,11 @@
+name: simi_close_claim
+title: Simi close claim
+description: Close out a Simi claim — claim id, payment, processed
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false

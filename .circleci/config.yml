@@ -10,8 +10,8 @@ jobs:
           name: test
           command: bin/test
       - run:
-          name: simi-claims tests
-          command: simi/simi-claims/bin/test
+          name: simi-stage-invoice tests
+          command: simi/simi-stage-invoice/bin/test
       - run:
           name: jeep-maintenance tests
           command: cd life/jeep/jeep-schedule && python3 -m unittest discover -s tests

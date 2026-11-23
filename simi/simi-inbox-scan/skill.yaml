@@ -1,6 +1,6 @@
 name: simi_inbox_scan
 title: Simi inbox scan
-description: Stage new Simi vet invoices from Gmail
+description: Watch Gmail for new Simi vet invoices
 include_in_prompt: true
 availability:
   confidential_vm: true

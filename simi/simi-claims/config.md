@@ -1,7 +1,8 @@
 # simi-claims config
 
-Machine values for `bin/`. Scripts read the fenced JSON block at run time —
-never hardcode these in scripts or prose.
+Machine values for the Simi skills — the shared config the action
+skills and their CLIs read. Scripts read the fenced JSON block at run
+time — never hardcode these in scripts or prose.
 
 ```json
 {
@@ -32,7 +33,7 @@ never hardcode these in scripts or prose.
   "policy_form": "VS-G-15-CA",
   "timezone": "America/Los_Angeles",
   "filename_pattern": "invoice_yyyy_mm_dd_<invoice_id>.pdf",
-  "status_values": ["todo", "submitted", "processed"]
+  "status_values": ["todo", "doing", "submitted", "processed"]
 }
 ```
 
@@ -49,16 +50,25 @@ Notes:
 - `filename_pattern`: `invoice_yyyy_mm_dd_<invoice_id>.pdf` — date and
   invoice number, per Peter's `invoice_processing` doc (set 2026-11-05;
   all existing PDFs were renamed to match in the restructure).
-- `status_values` (model set 2026-11-05): `todo` = invoice captured
+- `status_values` (model set 2026-11-05; `doing` added and
+  `submitted` redefined 2026-11-23): `todo` = invoice captured
   (PDF in `invoices/todo` + row logged), not yet filed;
-  `submitted` = claim exists in Nationwide (claim_id + submitted_date
-  filled from the portal; PDF moved to `invoices/processed`);
+  `doing` = Peter is filing in the portal (quick step, optional to
+  track); `submitted` = Peter has filed (submitted_date = filing
+  date, set from his chat report; PDF moved to
+  `invoices/processed`; claim_id filled later, when the claim
+  appears in the portal and he sends the details screenshot);
   `processed` = Peter deposited the check and amount_paid is filled.
+  The sheet's status column carries a strict dropdown with these
+  four values; rows added later do not inherit the validation
+  automatically — apply it to new rows when adding them.
 - The sheet's data starts at row 3 (row 1 blank, row 2 headers at
   B2:K2, Peter's "Steps to process" block lives at L2:L5). Rows are
   sorted by treatment_date, newest at the bottom. Append new rows
   below the last data row.
 - `invoice_id` is filled for MPH rows only (blank for other locations,
-  per Peter 2026-11-05). `claim_id` and `submitted_date` come from the
-  Nationwide portal — the portal is the source of truth for whether a
-  claim was submitted; receipt emails are not used.
+  per Peter 2026-11-05). `submitted_date` is the filing date, set
+  from Peter's chat report that he filed. `claim_id` comes from the
+  Nationwide portal via the claim-details screenshot — the portal is
+  the source of truth for the claim's identity; receipt emails are
+  not used.

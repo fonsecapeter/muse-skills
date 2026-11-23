@@ -11,7 +11,7 @@ connected, follow the gmail skill's SKILL.md connect flow.
 This skill is read-only against Gmail: it searches and downloads
 attachments. Its writes are the lined-up output — the dated PDF into the
 Drive `invoices/todo` folder and the `todo` spreadsheet row
-(via the simi-claims CLIs), plus a local backup copy in
+(via the simi-stage-invoice and simi-claims CLIs), plus a local backup copy in
 `~/workspace/simi-claims/work/`. It never writes back to Gmail.
 
 ## Learning loop
