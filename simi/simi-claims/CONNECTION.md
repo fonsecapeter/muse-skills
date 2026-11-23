@@ -15,8 +15,8 @@ If any comes back not connected, follow that skill's SKILL.md connect flow
 
 Peter files manually: the portal bot-checks the Muse browser, so
 there is no browser filing flow. Tony's part is staging the invoice
-and handing him the PDF and the login link. Never store or reuse his
-Nationwide credentials.
+(the simi-stage-invoice skill) and handing him the PDF and the login
+link. Never store or reuse his Nationwide credentials.
 
 ## Learning loop
 

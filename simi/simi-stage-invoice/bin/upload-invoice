@@ -4,7 +4,7 @@
 # drive_folder_id, i.e. the processed folder; pass --folder to override,
 # e.g. the unprocessed folder). Prints the uploaded file's name and link.
 set -euo pipefail
-SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SKILL_DIR="$HOME/workspace/custom-skills/simi-claims"
 export SKILL_DIR PDF="$1" DEST="$2" FOLDER=""
 if [ "${3:-}" = "--folder" ] && [ -n "${4:-}" ]; then FOLDER="$4"; fi
 python3 <<'EOF'

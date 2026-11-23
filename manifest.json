@@ -45,6 +45,22 @@
       "bucket": "simi"
     },
     {
+      "name": "simi-stage-invoice",
+      "bucket": "simi"
+    },
+    {
+      "name": "simi-log-filing",
+      "bucket": "simi"
+    },
+    {
+      "name": "simi-close-claim",
+      "bucket": "simi"
+    },
+    {
+      "name": "simi-reconcile",
+      "bucket": "simi"
+    },
+    {
       "name": "gtd-review",
       "bucket": "gtd"
     },

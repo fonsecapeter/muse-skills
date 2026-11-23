@@ -1,6 +1,6 @@
 name: simi_claims
 title: Simi claims
-description: Line up Simi's Nationwide pet insurance claims
+description: The Simi claims model — state machine, plan terms, shared config
 include_in_prompt: true
 availability:
   confidential_vm: true

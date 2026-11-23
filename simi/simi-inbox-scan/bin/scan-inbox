@@ -15,6 +15,7 @@ SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 cfg = json.loads(re.search(r'```json\n(.*?)```',
     open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
 CLAIMS = os.path.expanduser("~/workspace/custom-skills/simi-claims")
+STAGE = os.path.expanduser("~/workspace/custom-skills/simi-stage-invoice")
 WORK = os.path.expanduser("~/workspace/simi-claims/work")
 STATE = os.path.expanduser(cfg["state_file"])
 os.makedirs(WORK, exist_ok=True)
@@ -78,7 +79,8 @@ def download(mid, att_id):
     return base64.b64decode(data)
 
 def cli(script, *args):
-    return subprocess.run([os.path.join(CLAIMS, "bin", script), *args],
+    home = STAGE if os.path.exists(os.path.join(STAGE, "bin", script)) else CLAIMS
+    return subprocess.run([os.path.join(home, "bin", script), *args],
                           capture_output=True, text=True).stdout
 
 # ---- idempotency snapshots: what's already captured ----

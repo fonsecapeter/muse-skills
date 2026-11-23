@@ -1,0 +1,11 @@
+name: simi_log_filing
+title: Simi log filing
+description: Log a Simi claim Peter filed on Nationwide
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false

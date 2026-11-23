@@ -30,10 +30,11 @@
 # Usage: bin/reconcile
 import json, os, re, hashlib, base64, subprocess, tempfile
 
-SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INBOX = os.path.expanduser("~/workspace/custom-skills/simi-inbox-scan")
 cfg = json.loads(re.search(r'```json\n(.*?)```',
-    open(os.path.join(SKILL_DIR, "config.md")).read(), re.S).group(1))
+    open(os.path.join(INBOX, "config.md")).read(), re.S).group(1))
 CLAIMS = os.path.expanduser("~/workspace/custom-skills/simi-claims")
+STAGE = os.path.expanduser("~/workspace/custom-skills/simi-stage-invoice")
 WORK = os.path.expanduser("~/workspace/simi-claims/work")
 STATE = os.path.expanduser(cfg["state_file"])
 TODO_FOLDER = cfg["unprocessed_folder_id"]
@@ -87,7 +88,8 @@ def download(mid, att_id):
     return base64.b64decode(data)
 
 def cli(script, *args):
-    r = subprocess.run([os.path.join(CLAIMS, "bin", script), *args],
+    home = STAGE if os.path.exists(os.path.join(STAGE, "bin", script)) else CLAIMS
+    r = subprocess.run([os.path.join(home, "bin", script), *args],
                        capture_output=True, text=True)
     return r.returncode == 0, r.stdout
 

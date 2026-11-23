@@ -1,0 +1,11 @@
+name: simi_stage_invoice
+title: Simi stage invoice
+description: Stage a Simi vet invoice into Drive and the sheet
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  status: active
+  needs_review: false
