@@ -186,7 +186,12 @@ substitute for following the conventions.
   exactly like the existing custom skills. Record learnings the moment they
   surface: `~/workspace/custom-skills/record-learning/bin/record-learning
   <skill-name> "<learning>"`. A correction from Peter is an automatic
-  trigger — record it in the same turn, unprompted. Learnings that span
+  trigger — record it in the same turn, unprompted. So is his feedback
+  on a PR when it has general applicability beyond that diff: record it
+  at review time, against skill-authoring when it is about skill
+  authoring, against coding when it is about code — so it flows back
+  into the authoring skills and conventions instead of living only in
+  the PR thread. Learnings that span
   skills are tagged `cross-skill` in the same central log.
 - All pending learnings live in one central log
   (`~/workspace/learning-log/learnings.md`, outside source control),

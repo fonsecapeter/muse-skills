@@ -29,6 +29,9 @@ alike. It lives in one place only: read it there, never copy it.
 
 Owned by the record-learning skill (see Dependencies). Record with
 `~/workspace/custom-skills/record-learning/bin/record-learning coding "<learning>"`.
+Peter's feedback on a PR about code, when it has general applicability
+beyond that diff, is a trigger too — record it against coding at review
+time, so it flows back here instead of living only in the PR thread.
 
 ## Dependencies
 
