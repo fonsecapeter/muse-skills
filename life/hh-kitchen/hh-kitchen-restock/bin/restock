@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-# restock — read and maintain the local HH Kitchen restock config,
-# and read Peter's Google Tasks Inventory list.
+# restock — read and maintain the local HH Kitchen restock config.
 # Usage:
 #   bin/restock list                 grouped items + spec cards, as JSON
-#   bin/restock inventory            open Inventory items, as JSON
 #   bin/restock resolve "<term>"     the one entry a shorthand names
 #   bin/restock learn "<name>" [--product P] [--brand B]
 #                    [--shorthand S] [--quantity Q] [--notes N]
-#   bin/restock complete "<title>"   mark an Inventory task complete
 #   bin/restock log-order "<text>"   append an order record locally
 # The skill's config.json names the local config file (outside the
-# repo) and the tasks CLI. This CLI never touches a cart or an order.
+# repo). The Inventory list itself belongs to the inventory skill;
+# this CLI never touches a cart or an order.
 # Fails loudly (stderr + non-zero exit) on any bad config, ambiguous
 # shorthand, or failed read.
 import argparse
@@ -76,40 +74,6 @@ def cmd_list(_args):
     }, indent=2))
 
 
-def find_inventory_list_id(tasks_cli, title):
-    r = subprocess.run([tasks_cli, "tasks", "tasklists", "list"],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        fail(f"tasks CLI failed listing task lists: {r.stderr.strip()[:300]}")
-    try:
-        lists = json.loads(r.stdout).get("items", [])
-    except Exception:
-        fail(f"unparseable task lists response: {r.stdout[:200]}")
-    for lst in lists:
-        if lst.get("title") == title:
-            return lst["id"]
-    fail(f"no Google Tasks list titled {title!r}")
-
-
-def cmd_inventory(_args):
-    cfg = skill_config()
-    list_id = find_inventory_list_id(cfg["tasks_cli"],
-                                     cfg["inventory_list_title"])
-    params = json.dumps({"tasklist": list_id, "showCompleted": False})
-    r = subprocess.run([cfg["tasks_cli"], "tasks", "tasks", "list",
-                        "--params", params],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        fail(f"tasks CLI failed reading Inventory: {r.stderr.strip()[:300]}")
-    try:
-        items = json.loads(r.stdout).get("items", [])
-    except Exception:
-        fail(f"unparseable Inventory response: {r.stdout[:200]}")
-    open_items = [{"title": i.get("title", ""), "notes": i.get("notes", "")}
-                  for i in items if i.get("status") != "completed"]
-    print(json.dumps(open_items, indent=2))
-
-
 def matches(entry, term):
     term = term.strip().lower()
     names = [entry.get("id", ""), entry.get("name", ""),
@@ -132,46 +96,6 @@ def cmd_resolve(args):
         names = ", ".join(e.get("name", "?") for e in hits)
         fail(f"{args.term!r} is ambiguous: {names}")
     print(json.dumps(hits[0], indent=2))
-
-
-def run_tasks(cfg, *cli_args):
-    r = subprocess.run([cfg["tasks_cli"], "tasks", *cli_args],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        fail(f"tasks CLI failed ({' '.join(cli_args)}): "
-             f"{r.stderr.strip()[:300]}")
-    try:
-        return json.loads(r.stdout)
-    except Exception:
-        fail(f"unparseable tasks response: {r.stdout[:200]}")
-
-
-def open_inventory_tasks(cfg):
-    list_id = find_inventory_list_id(cfg["tasks_cli"],
-                                     cfg["inventory_list_title"])
-    params = json.dumps({"tasklist": list_id, "showCompleted": False})
-    d = run_tasks(cfg, "tasks", "list", "--params", params)
-    return list_id, [i for i in d.get("items", [])
-                     if i.get("status") != "completed"]
-
-
-def cmd_complete(args):
-    cfg = skill_config()
-    list_id, tasks = open_inventory_tasks(cfg)
-    hits = [t for t in tasks
-            if t.get("title", "").lower() == args.title.lower()]
-    if not hits:
-        fail(f"no open Inventory task titled {args.title!r}")
-    if len(hits) > 1:
-        fail(f"{len(hits)} open Inventory tasks titled {args.title!r}")
-    task = hits[0]
-    params = json.dumps({"tasklist": list_id, "task": task["id"]})
-    run_tasks(cfg, "tasks", "patch", "--params", params,
-              "--json", json.dumps({"status": "completed"}))
-    _, remaining = open_inventory_tasks(cfg)
-    if any(t["id"] == task["id"] for t in remaining):
-        fail(f"task {args.title!r} still open after patch")
-    print(json.dumps({"completed": task.get("title", "")}, indent=2))
 
 
 def cmd_log_order(args):
@@ -209,7 +133,6 @@ def main():
     parser = argparse.ArgumentParser(prog="restock")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list")
-    sub.add_parser("inventory")
     p_resolve = sub.add_parser("resolve")
     p_resolve.add_argument("term")
     p_learn = sub.add_parser("learn")
@@ -219,14 +142,11 @@ def main():
     p_learn.add_argument("--shorthand")
     p_learn.add_argument("--quantity", type=int)
     p_learn.add_argument("--notes")
-    p_complete = sub.add_parser("complete")
-    p_complete.add_argument("title")
     p_order = sub.add_parser("log-order")
     p_order.add_argument("summary")
     args = parser.parse_args()
-    {"list": cmd_list, "inventory": cmd_inventory,
-     "resolve": cmd_resolve, "learn": cmd_learn,
-     "complete": cmd_complete, "log-order": cmd_log_order}[args.command](args)
+    {"list": cmd_list, "resolve": cmd_resolve, "learn": cmd_learn,
+     "log-order": cmd_log_order}[args.command](args)
 
 
 if __name__ == "__main__":

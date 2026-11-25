@@ -11,7 +11,7 @@ cart and never places an order.
 
 ## Gather
 
-1. Run `~/workspace/custom-skills/hh-kitchen-restock/bin/restock inventory`
+1. Run `~/workspace/custom-skills/inventory/bin/inventory list`
    for the open Inventory items, and keep the grocery-store-like
    ones, judging by the hh-kitchen-restock rules.
 2. Run `~/workspace/custom-skills/hh-kitchen-restock/bin/restock list`
@@ -25,6 +25,7 @@ cart and never places an order.
    for hh-kitchen-build.
 
 ## Dependencies
+- inventory (bin/inventory) — the Inventory list itself
 - hh-kitchen-restock (bin/restock) — the config, the grouped items, and the Inventory read; never reimplement them
 - record-learning (bin/record-learning) — learning loop
 

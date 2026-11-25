@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+# inventory — read Peter's Google Tasks Inventory list and complete
+# items on it. The shared front door for every domain that feeds off
+# the list (kitchen, camera batteries, ...).
+# Usage:
+#   bin/inventory list               open Inventory items, as JSON
+#   bin/inventory complete "<title>" mark an Inventory task complete
+# Completion is fulfillment-gated by the calling skill: this CLI
+# only performs the write it is told to perform, after the caller
+# has verified the item was actually fulfilled (delivered, or its
+# order submitted). The skill's config.json names the tasks CLI and
+# the list title. Fails loudly (stderr + non-zero exit) on any bad
+# config, missing or ambiguous title, or failed read/write.
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def fail(msg):
+    print(f"inventory: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def load_json(path, what):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception as e:
+        fail(f"cannot load {what} ({path}): {e}")
+
+
+def skill_config():
+    return load_json(os.path.join(SKILL_DIR, "config.json"), "config.json")
+
+
+def find_list_id(tasks_cli, title):
+    r = subprocess.run([tasks_cli, "tasks", "tasklists", "list"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"tasks CLI failed listing task lists: {r.stderr.strip()[:300]}")
+    try:
+        lists = json.loads(r.stdout).get("items", [])
+    except Exception:
+        fail(f"unparseable task lists response: {r.stdout[:200]}")
+    for lst in lists:
+        if lst.get("title") == title:
+            return lst["id"]
+    fail(f"no Google Tasks list titled {title!r}")
+
+
+def run_tasks(cfg, *cli_args):
+    r = subprocess.run([cfg["tasks_cli"], "tasks", *cli_args],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"tasks CLI failed ({' '.join(cli_args)}): "
+             f"{r.stderr.strip()[:300]}")
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        fail(f"unparseable tasks response: {r.stdout[:200]}")
+
+
+def open_tasks(cfg):
+    list_id = find_list_id(cfg["tasks_cli"], cfg["inventory_list_title"])
+    params = json.dumps({"tasklist": list_id, "showCompleted": False})
+    d = run_tasks(cfg, "tasks", "list", "--params", params)
+    return list_id, [i for i in d.get("items", [])
+                     if i.get("status") != "completed"]
+
+
+def cmd_list(_args):
+    cfg = skill_config()
+    _, tasks = open_tasks(cfg)
+    print(json.dumps([{"title": t.get("title", ""),
+                       "notes": t.get("notes", "")} for t in tasks],
+                     indent=2))
+
+
+def cmd_complete(args):
+    cfg = skill_config()
+    list_id, tasks = open_tasks(cfg)
+    hits = [t for t in tasks
+            if t.get("title", "").lower() == args.title.lower()]
+    if not hits:
+        fail(f"no open Inventory task titled {args.title!r}")
+    if len(hits) > 1:
+        fail(f"{len(hits)} open Inventory tasks titled {args.title!r}")
+    task = hits[0]
+    params = json.dumps({"tasklist": list_id, "task": task["id"]})
+    run_tasks(cfg, "tasks", "patch", "--params", params,
+              "--json", json.dumps({"status": "completed"}))
+    _, remaining = open_tasks(cfg)
+    if any(t["id"] == task["id"] for t in remaining):
+        fail(f"task {args.title!r} still open after patch")
+    print(json.dumps({"completed": task.get("title", "")}, indent=2))
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="inventory")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("list")
+    p_complete = sub.add_parser("complete")
+    p_complete.add_argument("title")
+    args = parser.parse_args()
+    {"list": cmd_list, "complete": cmd_complete}[args.command](args)
+
+
+if __name__ == "__main__":
+    main()

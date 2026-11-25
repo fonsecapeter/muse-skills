@@ -9,8 +9,9 @@ The shared model for the HH Kitchen restock suite. The content
 lives in the local config named in `config.json` (outside this
 repo): the store, the staple list with the brands and shorthands
 Peter uses, and what has been learned about Inventory items.
-`bin/restock` reads and writes that local config and reads the
-Inventory list; it never touches a cart.
+`bin/restock` reads and writes that local config; it never
+touches a cart. The Inventory list itself belongs to the
+inventory skill. 
 
 ## The local config
 
@@ -79,7 +80,7 @@ that item with `bin/restock learn` so the next run already knows.
 
 ## Dependencies
 - ordering-platform (external, the platform named in the local config store.platform) — store search and cart; its connector doc governs its use
-- google_tasks (external, /opt/hatch/bin/hatch_gws_cli) — the Inventory list, read through bin/restock; never reimplement its auth
+- inventory (bin/inventory) — the Inventory list itself: reading it and completing items on it
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop

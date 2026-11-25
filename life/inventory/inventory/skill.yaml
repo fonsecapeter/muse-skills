@@ -1,0 +1,10 @@
+name: inventory
+title: Inventory
+description: 'Track the shared Inventory list'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
