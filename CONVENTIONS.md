@@ -12,6 +12,30 @@ substitute for following the conventions.
 ## Structure
 
 - **Playbook in `SKILL.md`.** Agentic judgment and prose live here.
+- **Reference docs in `docs/`.** Material worth keeping but not
+  part of the run — architecture maps, diagrams, background —
+  lives in a `docs/` file inside the skill. SKILL.md doesn't wire
+  it into the playbook; it's there when the shape of the work
+  needs checking, and it follows the same rules as the playbook
+  (one source of truth, no stale enumerations). An architecture
+  doc separates the three layers — skill (mechanism), config
+  (state), connector/API (external use) — and labels each edge
+  read or write:
+
+  ```mermaid
+  flowchart TB
+      subgraph skill["SKILL — mechanism"]
+          phase["phase skill"]
+      end
+      subgraph config["CONFIG — state"]
+          cfg[("config")]
+      end
+      subgraph api["CONNECTOR / API — external use"]
+          ext["external service"]
+      end
+      phase -->|"reads / writes"| cfg
+      phase -->|"reads / writes"| ext
+  ```
 - **Machine values in `config.md`.** A fenced block (yaml or json); scripts
   read it at run time. Never hardcode machine values in scripts or prose.
 - **Mechanism in the skill, content in config.** A skill carries
