@@ -1,13 +1,12 @@
-
-
 # New Skill
 
 Creates a new personal skill in the muse-skills repo, linked live
 into `~/workspace/custom-skills/`. Two sources govern the work:
 
-- The **built-in `skill-creator` skill**
-  (`/opt/muse/skills/skill-creator`) owns the mechanics of authoring a
-  skill — structure, naming, frontmatter. Read it and follow it.
+- The **built-in skill template**
+  (`/opt/muse/skills/custom-connector-setup/templates/skill/`) owns
+  the mechanics of authoring a skill — structure, naming,
+  frontmatter. Read it and follow it.
 - **Peter's conventions** (`~/projects/muse-skills/CONVENTIONS.md`)
   apply on top of the built-in flow — while drafting and while
   editing, every version complies. All of Peter's authoring
@@ -16,9 +15,8 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
 
 ## Steps
 
-1. **Read the built-in skill.** Follow
-   `/opt/muse/skills/custom-connector-setup/templates/skill/SKILL.md` (plus its authoring guide)
-   for the mechanics.
+1. **Read the built-in template** and its authoring guide, and
+   follow them for the mechanics.
 2. **Read the conventions.** `~/projects/muse-skills/CONVENTIONS.md`,
    and apply them throughout drafting. Author in Muse's format:
    `skill.yaml` carries the name, title, and description. Keep the
@@ -44,7 +42,4 @@ Owned by the record-learning skill (see Dependencies). Record with
 - record-learning (bin/record-learning) — learning loop
 - sweep-learnings (bin/sweep-learnings) — audits the new skill against the repo CONVENTIONS.md
 - skill-deps (bin/map) — verify the new skill's declared dependencies
-## Available connectors
-
-Use `muse.connector_search` to find the current connector docs before following
-recovered instructions.
+- skill-template (external, /opt/muse/skills/custom-connector-setup/templates/skill/) — the authoring mechanics this skill follows
