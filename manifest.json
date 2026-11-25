@@ -120,6 +120,16 @@
       "bucket": "life"
     },
     {
+      "name": "inventory",
+      "bucket": "life",
+      "path": "life/inventory/inventory"
+    },
+    {
+      "name": "inventory-gather",
+      "bucket": "life",
+      "path": "life/inventory/inventory-gather"
+    },
+    {
       "name": "hh-kitchen-restock",
       "bucket": "life",
       "path": "life/hh-kitchen/hh-kitchen-restock"

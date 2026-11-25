@@ -17,7 +17,7 @@ Runs after an HH Kitchen order is delivered.
 2. An Inventory item counts as filled when it was delivered as
    ordered, or substituted and Peter kept the substitution. For
    each filled Inventory item, run
-   `~/workspace/custom-skills/hh-kitchen-restock/bin/restock complete "<Inventory title>"`
+   `~/workspace/custom-skills/inventory/bin/inventory complete "<Inventory title>"`
    with the task's exact title. Leave every unfilled item on the
    list for the next run; never complete a task from the order
    alone — delivery is the evidence.
@@ -31,7 +31,8 @@ Runs after an HH Kitchen order is delivered.
    naming any substitutions Peter has not already seen.
 
 ## Dependencies
-- hh-kitchen-restock (bin/restock) — the order log, the Inventory completion, and the preference write; never reimplement them
+- hh-kitchen-restock (bin/restock) — the order log and the preference write; never reimplement them
+- inventory (bin/inventory) — completing Inventory items, after delivery is verified here
 - ordering-platform (external, the platform named in the local config store.platform) — the order record that shows what was actually delivered
 - record-learning (bin/record-learning) — learning loop
 
