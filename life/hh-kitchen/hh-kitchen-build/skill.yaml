@@ -1,0 +1,10 @@
+name: hh_kitchen_build
+title: HH Kitchen Build
+description: 'Build an HH Kitchen restock cart from Peter''s gather answer'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

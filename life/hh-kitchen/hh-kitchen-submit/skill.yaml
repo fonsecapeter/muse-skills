@@ -1,0 +1,10 @@
+name: hh_kitchen_submit
+title: HH Kitchen Submit
+description: 'Submit a built HH Kitchen restock order'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

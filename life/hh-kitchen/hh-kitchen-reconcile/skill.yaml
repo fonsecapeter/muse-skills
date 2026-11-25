@@ -1,0 +1,10 @@
+name: hh_kitchen_reconcile
+title: HH Kitchen Reconcile
+description: 'Reconcile a delivered HH Kitchen restock'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
