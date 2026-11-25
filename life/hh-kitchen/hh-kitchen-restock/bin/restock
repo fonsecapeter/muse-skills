@@ -15,6 +15,7 @@
 # shorthand, or failed read.
 import argparse
 import json
+import re
 import os
 import subprocess
 import sys
@@ -111,9 +112,15 @@ def cmd_inventory(_args):
 
 def matches(entry, term):
     term = term.strip().lower()
-    names = [entry.get("name", ""), entry.get("shorthand", "")]
+    names = [entry.get("id", ""), entry.get("name", ""),
+             entry.get("shorthand", "")]
     names += entry.get("aliases", [])
     return term in [n.lower() for n in names if n]
+
+
+def slug_id(name):
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower().replace("'", "")).strip("-")
+    return slug
 
 
 def cmd_resolve(args):
@@ -183,7 +190,8 @@ def cmd_learn(args):
     entry = next((e for e in learned
                   if e.get("name", "").lower() == args.name.lower()), None)
     if entry is None:
-        entry = {"name": args.name, "shorthand": "", "aliases": [],
+        entry = {"id": slug_id(args.name), "name": args.name,
+                 "shorthand": "", "aliases": [],
                  "product": "", "brand": "", "default_quantity": 1,
                  "action": "ask", "notes": ""}
         learned.append(entry)
