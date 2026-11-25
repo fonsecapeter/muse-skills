@@ -15,6 +15,9 @@ submits an order.
 1. Take the items Peter checked in his gather reply. Resolve every
    shorthand with `~/workspace/custom-skills/hh-kitchen-restock/bin/restock resolve`
    before searching, and use each entry's learned product and brand.
+   For an unspec'd entry (no learned product), search the store
+   fresh and pick by the config's preferences — cleanest ingredient
+   list, organic produce — and flag the pick when showing the cart.
 2. If Peter names a spec card, expand it from the config's
    spec cards: the full set, or only the pieces he says are
    missing.
