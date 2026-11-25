@@ -17,19 +17,24 @@ each domain's own flow.
 1. Run `~/workspace/custom-skills/inventory/bin/inventory list`
    for the open Inventory items.
 2. Route each item: grocery-store-like items (judged by the
-   hh-kitchen-restock rules) belong to the kitchen; anything else
-   is presented verbatim under "Also on Inventory".
+   hh-kitchen-restock rules) belong to the kitchen; an item that
+   names a device in the camera-batteries registry belongs to
+   batteries — resolve it with
+   `~/workspace/custom-skills/camera-batteries/bin/batteries resolve "<item text>"`
+   and present the resolved battery lines, not the raw item;
+   anything else is presented verbatim under "Also on Inventory".
 3. Present one ask list: the routed Inventory items first, by
    domain, then the kitchen ask from hh-kitchen-gather (the line,
    backstock, specials as a checklist).
 4. Stop there. Peter's reply routes onward: kitchen picks trigger
-   hh-kitchen-build; other items are handled in chat or by their
-   domain's flow when one exists.
+   hh-kitchen-build; battery picks trigger camera-batteries-order;
+   other items are handled in chat.
 
 ## Dependencies
 - inventory (bin/inventory) — the list itself; never reimplement it
 - hh-kitchen-gather (SKILL.md) — the kitchen section of the ask
 - hh-kitchen-restock (bin/restock) — resolving kitchen items against the config
+- camera-batteries (bin/batteries) — resolving device items to battery lines
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop

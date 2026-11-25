@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+# batteries — read Peter's local camera-battery registry and
+# resolve a device (or an Inventory item naming one) to the
+# batteries it takes.
+# Usage:
+#   bin/batteries list               the registry, as JSON
+#   bin/batteries resolve "<text>"   devices named in the text,
+#                                    with their battery slots
+#                                    resolved to battery specs
+# The registry lives in the local config named in config.json
+# (outside the repo). This CLI never orders anything. Fails loudly
+# (stderr + non-zero exit) on any bad config or unmatched text.
+import argparse
+import json
+import os
+import sys
+
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def fail(msg):
+    print(f"batteries: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def load_json(path, what):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception as e:
+        fail(f"cannot load {what} ({path}): {e}")
+
+
+def registry():
+    cfg = load_json(os.path.join(SKILL_DIR, "config.json"), "config.json")
+    return load_json(os.path.expanduser(cfg["local_config"]),
+                     "local battery registry")
+
+
+def resolve_device(reg, device):
+    by_id = {b["id"]: b for b in reg.get("batteries", [])}
+    slots = []
+    for slot in device.get("slots", []):
+        battery = by_id.get(slot["battery_id"])
+        if battery is None:
+            fail(f"device {device['id']!r} names unknown battery "
+                 f"{slot['battery_id']!r}")
+        slots.append({**battery, "quantity": slot["quantity"]})
+    return {**device, "slots": slots}
+
+
+def cmd_list(_args):
+    reg = registry()
+    print(json.dumps({
+        "batteries": reg.get("batteries", []),
+        "devices": [resolve_device(reg, d)
+                    for d in reg.get("devices", [])],
+    }, indent=2))
+
+
+def device_matches(device, text):
+    names = [device.get("id", "").replace("-", " "),
+             device.get("name", "")]
+    names += device.get("aliases", [])
+    return any(n and n.lower() in text for n in names)
+
+
+def cmd_resolve(args):
+    reg = registry()
+    text = args.text.lower()
+    hits = [d for d in reg.get("devices", [])
+            if device_matches(d, text)]
+    if not hits:
+        named = [b for b in reg.get("batteries", [])
+                 if b.get("type", "").lower() in text
+                 or b.get("id", "").lower() in text]
+        if named:
+            ids = {b["id"] for b in named}
+            hits = [d for d in reg.get("devices", [])
+                    if any(s["battery_id"] in ids
+                           for s in d.get("slots", []))]
+    if not hits:
+        fail(f"no device or battery matches {args.text!r}")
+    print(json.dumps([resolve_device(reg, d) for d in hits], indent=2))
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="batteries")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("list")
+    p_resolve = sub.add_parser("resolve")
+    p_resolve.add_argument("text")
+    args = parser.parse_args()
+    {"list": cmd_list, "resolve": cmd_resolve}[args.command](args)
+
+
+if __name__ == "__main__":
+    main()
