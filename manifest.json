@@ -130,6 +130,16 @@
       "path": "life/inventory/inventory-gather"
     },
     {
+      "name": "camera-batteries",
+      "bucket": "life",
+      "path": "life/camera-batteries/camera-batteries"
+    },
+    {
+      "name": "camera-batteries-order",
+      "bucket": "life",
+      "path": "life/camera-batteries/camera-batteries-order"
+    },
+    {
       "name": "hh-kitchen-restock",
       "bucket": "life",
       "path": "life/hh-kitchen/hh-kitchen-restock"
