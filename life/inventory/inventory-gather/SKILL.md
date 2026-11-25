@@ -33,7 +33,7 @@ each domain's own flow.
 ## Dependencies
 - inventory (bin/inventory) — the list itself; never reimplement it
 - hh-kitchen-gather (SKILL.md) — the kitchen section of the ask
-- hh-kitchen-restock (bin/restock) — resolving kitchen items against the config
+- inventory (bin/inventory) — resolving items against the catalog, whichever domain they belong to
 - camera-batteries (bin/batteries) — resolving device items to battery lines
 - record-learning (bin/record-learning) — learning loop
 

@@ -1,1 +1,4 @@
-{"local_config":"~/workspace/camera-batteries/registry.json"}
+{
+  "local_config": "~/workspace/camera-batteries/registry.json",
+  "items_cli": "~/workspace/custom-skills/inventory/bin/inventory"
+}

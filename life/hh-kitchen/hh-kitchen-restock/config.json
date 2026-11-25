@@ -1,1 +1,6 @@
-{"inventory_list_title":"Inventory","local_config":"~/workspace/hh-kitchen/restock.json","tasks_cli":"/opt/hatch/bin/hatch_gws_cli"}
+{
+  "inventory_list_title": "Inventory",
+  "local_config": "~/workspace/hh-kitchen/restock.json",
+  "tasks_cli": "/opt/hatch/bin/hatch_gws_cli",
+  "items_cli": "~/workspace/custom-skills/inventory/bin/inventory"
+}

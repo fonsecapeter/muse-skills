@@ -5,26 +5,27 @@ description: "Track which device takes which batteries"
 
 # Camera Batteries
 
-The shared model for the camera-batteries suite. The content
-lives in the local registry named in `config.json` (outside this
-repo): the devices Peter owns and the batteries each one takes.
-`bin/batteries` reads that registry; it never orders anything.
+The shared model for the camera-batteries suite. Devices live
+in the local registry named in `config.json` (outside this
+repo); the batteries themselves are items in the inventory
+skill's unified catalog (type `battery`, spec in the item's
+`battery` block), read through its CLI. `bin/batteries` joins
+the two; it never orders anything.
 
 ## The registry
 
-Two catalogs, many-to-many, with quantity on the join — a
-device takes one or more battery types, and a battery type can
-serve several devices:
+Devices only — a composite over catalog items, many-to-many
+with quantity on the join: a device takes one or more battery
+items, and a battery item can serve several devices.
 
-- A **battery**: id, type ("CR2"), spec ("3V lithium"), preferred
-  brand, notes.
 - A **device**: id, name ("Canon AE-1"), aliases ("ae-1"), and
-  slots — a list of {battery_id, quantity}. Quantity lives on
-  the slot: the Instax takes 2× CR2, the AE-1 takes 1× PX28.
+  slots — a list of {battery_id, quantity}, where battery_id is
+  a catalog item id. Quantity lives on the slot: the Instax
+  takes 2× CR2, the AE-1 takes 1× PX28.
 
-Every id is assigned once and never changes; type, brand, and
-quantity are editable attributes. Not every device is a camera —
-anything battery-powered that Peter wants resolved the same way
+Every id is assigned once and never changes; quantity is an
+editable attribute. Not every device is a camera — anything
+battery-powered that Peter wants resolved the same way
 (the Jeep's AirTag) registers as a device.
 
 ## Resolving

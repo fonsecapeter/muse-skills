@@ -13,7 +13,7 @@ submits an order.
 ## Build
 
 1. Take the items Peter checked in his gather reply. Resolve every
-   shorthand with `~/workspace/custom-skills/hh-kitchen-restock/bin/restock resolve`
+   shorthand with `~/workspace/custom-skills/inventory/bin/inventory resolve`
    before searching, and use each entry's learned product and brand.
    For an unspec'd entry (no learned product), search the store
    fresh and pick by the config's preferences — cleanest ingredient
@@ -29,6 +29,7 @@ submits an order.
 4. Show Peter the built cart and stop.
 
 ## Dependencies
+- inventory (bin/inventory) — resolving items against the catalog
 - hh-kitchen-restock (bin/restock) — the config and shorthand resolution; never reimplement them
 - ordering-platform (external, the platform named in the local config store.platform) — store search and cart; its connector doc governs its use
 - groceries (external skill, /opt/muse/skills/groceries/SKILL.md) — basket and presentation rules this skill follows
