@@ -15,10 +15,12 @@ cart and never places an order.
    for the open Inventory items, and keep the grocery-store-like
    ones, judging by the hh-kitchen-restock rules.
 2. Run `~/workspace/custom-skills/hh-kitchen-restock/bin/restock list`
-   for the staples and learned items.
-3. Present one ask list, Inventory items first, then the staples
-   as a checklist (checkboxes when the surface offers them, a
-   plain numbered list otherwise).
+   for the grouped items (staples, backstock, occasional)
+   and the learned items.
+3. Present one ask list, Inventory items first, then the groups
+   in order — staples, backstock, occasional — as a checklist
+   (checkboxes when the surface offers them, a plain numbered
+   list otherwise).
 4. Stop there. Peter's reply, with what he checked, is the trigger
    for hh-kitchen-build.
 

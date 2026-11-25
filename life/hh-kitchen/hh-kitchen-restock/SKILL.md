@@ -14,7 +14,7 @@ Inventory list; it never touches a cart.
 
 ## The local config
 
-Each entry, staple or learned, carries the same fields:
+Each entry carries the same fields, whichever group it sits in:
 
 - **name**: the plain item name ("oat milk").
 - **shorthand**: the word Peter actually says ("malk"). A shorthand
@@ -26,9 +26,9 @@ Each entry, staple or learned, carries the same fields:
 - **product_id**: the learned product's id on the configured
   platform. Empty until learned.
 - **default_quantity**: how much a restock buys.
-- **action**: what a run does without being told. Staples default to
-  `ask`: never added silently, always offered in case he forgot he
-  needs them. `add` is set per entry only when Peter says so.
+- **action**: what a run does without being told. Entries default
+  to `ask`: never added silently, always offered in case he forgot
+  he needs them. `add` is set per entry only when Peter says so.
 
 The config's **store** object names the store and how to reach it:
 **name**, **retailer_name** (the store's name on the platform),
@@ -36,6 +36,15 @@ The config's **store** object names the store and how to reach it:
 **note** (which location, and anything else worth knowing). No
 skill in this suite names a store or a platform; both come from
 here.
+
+Entries sit in one of three groups, by churn: **staples**, the
+front line — high churn, the regular store run; **backstock** —
+keeps a long while, rarely needed; **occasional** — one-offs for
+recipes or hosting. **learned** holds grocery-like items seeded
+from the Inventory list that belong to no group yet. The config
+also holds **recipes**: named sets Peter can order whole or by
+missing pieces; a recipe's items name entries, or another recipe,
+across groups.
 
 ## The suite
 
