@@ -6,13 +6,9 @@ description: "Build an HH Kitchen restock cart from Peter's gather answer"
 # HH Kitchen Build
 
 Turns Peter's answer to an hh-kitchen-gather ask into a built
-cart at the configured store, on the configured platform. His response is the
-trigger: no answer, no cart. Building never submits an order;
-that is hh-kitchen-submit's job, after its own confirmation.
-
-The config, the shorthands, and the learned products live in the
-hh-kitchen-restock skill; this skill defers to its `bin/restock`
-CLI for all of them.
+cart at the configured store, on the configured platform. His
+response is the trigger: no answer, no cart. Building never
+submits an order.
 
 ## Build
 
@@ -23,12 +19,11 @@ CLI for all of them.
    local config, following that platform's connector doc for
    search, cart, and presentation. Verify the retailer matches
    the configured store before adding anything.
-3. Show Peter the built cart and stop. Submitting belongs to
-   hh-kitchen-submit, which confirms with him first.
+3. Show Peter the built cart and stop.
 
 ## Dependencies
 - hh-kitchen-restock (bin/restock) — the config and shorthand resolution; never reimplement them
-- ordering-platform (external, the platform named in the local config store.platform; currently instacart at /opt/hatch/bin/instacart) — store search and cart; its connector doc governs its use
+- ordering-platform (external, the platform named in the local config store.platform) — store search and cart; its connector doc governs its use
 - groceries (external skill, /opt/muse/skills/groceries/SKILL.md) — basket and presentation rules this skill follows
 - record-learning (bin/record-learning) — learning loop
 

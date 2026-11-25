@@ -5,11 +5,9 @@ description: "Submit a built HH Kitchen restock order"
 
 # HH Kitchen Submit
 
-Submits a cart built by hh-kitchen-build. The order goes in only
-after Peter confirms the built cart in this step — a gather answer
-or a built cart is not a confirmation to submit. Submitting never
-marks anything off the Inventory list; that is
-hh-kitchen-reconcile's job, after delivery.
+Submits a cart built by hh-kitchen-build. A gather answer or a
+built cart is not a confirmation to submit; the confirmation
+happens in this step.
 
 ## Submit
 
@@ -21,11 +19,10 @@ hh-kitchen-reconcile's job, after delivery.
 4. Record the order info (order id, what was ordered, the delivery
    window, and which items came from the Inventory list) with
    `~/workspace/custom-skills/hh-kitchen-restock/bin/restock log-order "<summary>"`.
-   The reconcile skill works against this record.
 
 ## Dependencies
 - hh-kitchen-restock (bin/restock) — the order log; never reimplement it
-- ordering-platform (external, the platform named in the local config store.platform; currently instacart at /opt/hatch/bin/instacart) — checkout; its connector doc governs its use
+- ordering-platform (external, the platform named in the local config store.platform) — checkout; its connector doc governs its use
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop

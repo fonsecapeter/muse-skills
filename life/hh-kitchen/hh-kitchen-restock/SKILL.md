@@ -5,13 +5,12 @@ description: "Restock kitchen staples from the configured store"
 
 # HH Kitchen Restock
 
-Builds a restock cart at the configured grocery store, on the
-ordering platform named in the local config.
-The mechanism lives here; the content lives in the local config
-named in `config.json` (outside this repo): the store, the staple
-list with the brands and shorthands Peter uses, and what has been
-learned about Inventory items. `bin/restock` reads and writes that
-local config and reads the Inventory list; it never touches a cart.
+The shared model for the HH Kitchen restock suite. The content
+lives in the local config named in `config.json` (outside this
+repo): the store, the staple list with the brands and shorthands
+Peter uses, and what has been learned about Inventory items.
+`bin/restock` reads and writes that local config and reads the
+Inventory list; it never touches a cart.
 
 ## The local config
 
@@ -44,17 +43,12 @@ This skill owns the shared model: the local config, the entry
 fields above, and `bin/restock`. The four phases of a restock are
 their own skills, and each defers to this one for the config:
 
-- **hh-kitchen-gather** builds the ask list and presents it, the
-  Google Tasks Inventory items first, the staples after. A cron
-  initiates it; gathering never touches a cart.
-- **hh-kitchen-build** runs when Peter answers a gather. It builds
-  the cart and shows it; building never submits.
-- **hh-kitchen-submit** submits a built cart, only after Peter
-  confirms it in that step, and records the order info.
-- **hh-kitchen-reconcile** runs after delivery. It marks Inventory
-  tasks complete only for items actually filled, and writes the
-  brand preferences the order revealed back into this config,
-  asking Peter when unsure.
+- **hh-kitchen-gather** builds and presents the ask list.
+- **hh-kitchen-build** builds the cart from Peter's gather answer.
+- **hh-kitchen-submit** submits a built cart and records the
+  order info.
+- **hh-kitchen-reconcile** closes out a delivered order against
+  the Inventory list and this config.
 
 Judging Inventory items, shared by all four: grocery-store-like
 means food, drink, and household consumables a grocery store
@@ -66,9 +60,8 @@ Peter which product he gets; after he answers, record it next to
 that item with `bin/restock learn` so the next run already knows.
 
 ## Dependencies
-- ordering-platform (external, the platform named in the local config store.platform; currently instacart at /opt/hatch/bin/instacart) — store search and cart; its connector doc governs its use
+- ordering-platform (external, the platform named in the local config store.platform) — store search and cart; its connector doc governs its use
 - google_tasks (external, /opt/hatch/bin/hatch_gws_cli) — the Inventory list, read through bin/restock; never reimplement its auth
-- groceries (external skill, /opt/muse/skills/groceries/SKILL.md) — basket and presentation rules this skill follows
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop
