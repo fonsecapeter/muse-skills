@@ -8,26 +8,21 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
 - The **built-in `skill-creator` skill**
   (`/opt/muse/skills/skill-creator`) owns the mechanics of authoring a
   skill — structure, naming, frontmatter. Read it and follow it.
-- **Peter's conventions**
-  (`~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`) apply on
-  top of the built-in flow — while drafting and while editing, every
-  version complies.
+- **Peter's conventions** (`~/projects/muse-skills/CONVENTIONS.md`)
+  apply on top of the built-in flow — while drafting and while
+  editing, every version complies. All of Peter's authoring
+  guidance lives in that file; this skill defers to it and
+  restates none of it.
 
 ## Steps
 
 1. **Read the built-in skill.** Follow
    `/opt/muse/skills/custom-connector-setup/templates/skill/SKILL.md` (plus its authoring guide)
    for the mechanics.
-2. **Read the conventions.**
-   `~/workspace/custom-skills/sweep-learnings/CONVENTIONS.md`: playbook in
-   SKILL.md, machine values in `config.md`, deterministic work scripted
-   as `bin/` CLIs wherever possible, crons as one-liners, declared
-   Dependencies, record-learning deferral. Apply throughout drafting.
-   Author in Muse's format:
-   `skill.yaml` carries the name, title, and description — the
-   description is the trigger text Muse matches on, so
-   when-it-applies goes there. Keep the body lean:
-   instructions only.
+2. **Read the conventions.** `~/projects/muse-skills/CONVENTIONS.md`,
+   and apply them throughout drafting. Author in Muse's format:
+   `skill.yaml` carries the name, title, and description. Keep the
+   body lean: instructions only.
 3. **Draft the skill in the repo**, in the bucket it belongs to:
    `~/projects/muse-skills/<bucket>/<name>/` (bare name, no prefix).
    Add its entry to the repo's `manifest.json` roster.
@@ -36,26 +31,8 @@ into `~/workspace/custom-skills/`. Two sources govern the work:
    `~/workspace/custom-skills/skill-deps/bin/map` — the new
    skill must appear with its Dependencies declared and no warnings.
 
-From here the sweep audits the new skill against CONVENTIONS.md.
-
-## Authoring standards
-
-Peter's reviews of this skill set how new skills read:
-
-- **Cadence lives in cron definitions.** Skill names and descriptions
-  name the job — the cron carries the schedule.
-- **Descriptions are short usage matchers.** The `skill.yaml` and
-  SKILL.md frontmatter descriptions name the job in a few words, for
-  example 'Find a specific TODO'.
-- **Plain statements.** Steps and rules read as plain statements.
-- **Positive framing.** State what to do and what happens.
-- **Code-writing best practices.** One source of truth per fact, one
-  job per skill, config separate from mechanism. Playbooks state the
-  mechanism and point at `config.md` for values.
-- **Split a two-job ask into grouped single-job skills.** When Peter
-  asks for one skill covering two jobs, build grouped single-job
-  skills under a shared group directory — the todo trio and haircut
-  group pattern — not one combined skill with subcommands.
+From here the sweep audits the new skill against
+`~/projects/muse-skills/CONVENTIONS.md`.
 
 ## Learning loop
 
@@ -65,7 +42,7 @@ Owned by the record-learning skill (see Dependencies). Record with
 ## Dependencies
 
 - record-learning (bin/record-learning) — learning loop
-- sweep-learnings (CONVENTIONS.md) — conventions live there
+- sweep-learnings (bin/sweep-learnings) — audits the new skill against the repo CONVENTIONS.md
 - skill-deps (bin/map) — verify the new skill's declared dependencies
 ## Available connectors
 
