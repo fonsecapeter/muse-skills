@@ -1,0 +1,10 @@
+name: hh_kitchen_restock
+title: HH Kitchen Restock
+description: 'Restock kitchen staples from the configured store'
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

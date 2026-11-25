@@ -120,6 +120,31 @@
       "bucket": "life"
     },
     {
+      "name": "hh-kitchen-restock",
+      "bucket": "life",
+      "path": "life/hh-kitchen/hh-kitchen-restock"
+    },
+    {
+      "name": "hh-kitchen-gather",
+      "bucket": "life",
+      "path": "life/hh-kitchen/hh-kitchen-gather"
+    },
+    {
+      "name": "hh-kitchen-build",
+      "bucket": "life",
+      "path": "life/hh-kitchen/hh-kitchen-build"
+    },
+    {
+      "name": "hh-kitchen-submit",
+      "bucket": "life",
+      "path": "life/hh-kitchen/hh-kitchen-submit"
+    },
+    {
+      "name": "hh-kitchen-reconcile",
+      "bucket": "life",
+      "path": "life/hh-kitchen/hh-kitchen-reconcile"
+    },
+    {
       "name": "jeep-check",
       "bucket": "life",
       "path": "life/jeep/jeep-check"
