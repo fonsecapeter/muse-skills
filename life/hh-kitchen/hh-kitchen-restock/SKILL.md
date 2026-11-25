@@ -16,6 +16,11 @@ Inventory list; it never touches a cart.
 
 Each entry carries the same fields, whichever group it sits in:
 
+- **id**: the entry's stable unique id, assigned once when the
+  entry is created and never changed. Recipes link to entries by
+  id. Everything else about an entry — name, brand, product,
+  size — is an editable attribute; changing any of them keeps the
+  id, so links never break.
 - **name**: the plain item name ("oat milk").
 - **shorthand**: the word Peter actually says ("malk"). A shorthand
   resolves to exactly one entry; resolve it with `bin/restock
@@ -43,8 +48,8 @@ keeps a long while, rarely needed; **occasional** — one-offs for
 recipes or hosting. **learned** holds grocery-like items seeded
 from the Inventory list that belong to no group yet. The config
 also holds **recipes**: named sets Peter can order whole or by
-missing pieces; a recipe's items name entries, or another recipe,
-across groups.
+missing pieces; a recipe's items list entry ids, or another
+recipe's id, across groups.
 
 ## The suite
 
