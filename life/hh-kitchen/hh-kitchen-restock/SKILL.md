@@ -26,7 +26,10 @@ Each entry carries the same fields, whichever group it sits in:
   resolves to exactly one entry; resolve it with `bin/restock
   resolve` before searching the store.
 - **product**: the exact product he likes ("MALK Unsweetened Almond
-  Malk"). Empty until learned.
+  Malk"). Empty until learned — and an entry may stay unspec'd on
+  purpose: empty product and product_id are a valid state, not a
+  gap. At build time an unspec'd entry is picked fresh from the
+  configured store, by the config's preferences.
 - **brand**: the brand, when it matters separately from the product.
 - **product_id**: the learned product's id on the configured
   platform. Empty until learned.
