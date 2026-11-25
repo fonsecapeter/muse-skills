@@ -2,13 +2,11 @@
 # restock — read and maintain the local HH Kitchen restock config.
 # Usage:
 #   bin/restock list                 grouped items + spec cards, as JSON
-#   bin/restock resolve "<term>"     the one entry a shorthand names
-#   bin/restock learn "<name>" [--product P] [--brand B]
-#                    [--shorthand S] [--quantity Q] [--notes N]
 #   bin/restock log-order "<text>"   append an order record locally
 # The skill's config.json names the local config file (outside the
-# repo). The Inventory list itself belongs to the inventory skill;
-# this CLI never touches a cart or an order.
+# repo). The items themselves live in the inventory skill's
+# catalog, read through its CLI; the Inventory list is also that
+# skill's. This CLI never touches a cart or an order.
 # Fails loudly (stderr + non-zero exit) on any bad config, ambiguous
 # shorthand, or failed read.
 import argparse
@@ -56,46 +54,33 @@ def save_local_config(cfg):
         fail(f"cannot write local restock config ({path}): {e}")
 
 
-def all_entries(cfg):
-    return (cfg.get("line", []) + cfg.get("backstock", [])
-            + cfg.get("specials", []) + cfg.get("learned", []))
+def catalog_items():
+    items_cli = os.path.expanduser(skill_config()["items_cli"])
+    r = subprocess.run([items_cli, "items"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"inventory CLI failed reading the catalog: "
+             f"{r.stderr.strip()[:300]}")
+    try:
+        return json.loads(r.stdout).get("items", [])
+    except Exception:
+        fail(f"unparseable catalog response: {r.stdout[:200]}")
 
 
 def cmd_list(_args):
     cfg = local_config()
+    grouped = {"line": [], "backstock": [], "specials": [],
+               "learned": []}
+    for item in catalog_items():
+        group = item.get("kitchen", {}).get("group")
+        if group in grouped:
+            grouped[group].append(item)
     print(json.dumps({
         "store": cfg.get("store", {}),
-        "line": cfg.get("line", []),
-        "backstock": cfg.get("backstock", []),
-        "specials": cfg.get("specials", []),
-        "learned": cfg.get("learned", []),
+        **grouped,
         "spec_cards": cfg.get("spec_cards", []),
         "orders": cfg.get("orders", []),
     }, indent=2))
-
-
-def matches(entry, term):
-    term = term.strip().lower()
-    names = [entry.get("id", ""), entry.get("name", ""),
-             entry.get("shorthand", "")]
-    names += entry.get("aliases", [])
-    return term in [n.lower() for n in names if n]
-
-
-def slug_id(name):
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower().replace("'", "")).strip("-")
-    return slug
-
-
-def cmd_resolve(args):
-    cfg = local_config()
-    hits = [e for e in all_entries(cfg) if matches(e, args.term)]
-    if not hits:
-        fail(f"no entry matches {args.term!r}")
-    if len(hits) > 1:
-        names = ", ".join(e.get("name", "?") for e in hits)
-        fail(f"{args.term!r} is ambiguous: {names}")
-    print(json.dumps(hits[0], indent=2))
 
 
 def cmd_log_order(args):
@@ -133,19 +118,10 @@ def main():
     parser = argparse.ArgumentParser(prog="restock")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list")
-    p_resolve = sub.add_parser("resolve")
-    p_resolve.add_argument("term")
-    p_learn = sub.add_parser("learn")
-    p_learn.add_argument("name")
-    p_learn.add_argument("--product")
-    p_learn.add_argument("--brand")
-    p_learn.add_argument("--shorthand")
-    p_learn.add_argument("--quantity", type=int)
-    p_learn.add_argument("--notes")
     p_order = sub.add_parser("log-order")
     p_order.add_argument("summary")
     args = parser.parse_args()
-    {"list": cmd_list, "resolve": cmd_resolve, "learn": cmd_learn,
+    {"list": cmd_list,
      "log-order": cmd_log_order}[args.command](args)
 
 

@@ -1,1 +1,5 @@
-{"inventory_list_title":"Inventory","tasks_cli":"/opt/hatch/bin/hatch_gws_cli"}
+{
+  "inventory_list_title": "Inventory",
+  "tasks_cli": "/opt/hatch/bin/hatch_gws_cli",
+  "local_config": "~/workspace/inventory/items.json"
+}

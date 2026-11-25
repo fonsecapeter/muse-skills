@@ -15,46 +15,27 @@ inventory skill.
 
 ## The local config
 
-Each entry carries the same fields, whichever group it sits in:
+The config holds what is kitchen-only: the **store** (name,
+retailer_name, platform, note — no skill in this suite names a
+store or a platform; both come from here), **preferences**,
+**spec cards**, and the **orders** log. The items themselves
+live in the inventory skill's unified catalog; an item belongs
+to the kitchen when it carries a `kitchen` block, whose `group`
+is its shelf, by churn, named the way a kitchen names them:
+**the line** — the front line, high churn, the regular store
+run; **backstock** — keeps a long while, rarely needed;
+**specials** — one-offs for a dish or hosting; **learned** —
+grocery-like items seeded from the Inventory list that belong
+to no group yet.
 
-- **id**: the entry's stable unique id, assigned once when the
-  entry is created and never changed. Spec cards link to entries
-  by id. Everything else about an entry — name, brand, product,
-  size — is an editable attribute; changing any of them keeps the
-  id, so links never break.
-- **name**: the plain item name ("oat milk").
-- **shorthand**: the word Peter actually says ("malk"). A shorthand
-  resolves to exactly one entry; resolve it with `bin/restock
-  resolve` before searching the store.
-- **product**: the exact product he likes ("MALK Unsweetened Almond
-  Malk"). Empty until learned — and an entry may stay unspec'd on
-  purpose: empty product and product_id are a valid state, not a
-  gap. At build time an unspec'd entry is picked fresh from the
-  configured store, by the config's preferences.
-- **brand**: the brand, when it matters separately from the product.
-- **product_id**: the learned product's id on the configured
-  platform. Empty until learned.
-- **default_quantity**: how much a restock buys.
-- **action**: what a run does without being told. Entries default
-  to `ask`: never added silently, always offered in case he forgot
-  he needs them. `add` is set per entry only when Peter says so.
+Item fields are the inventory skill's item model (id, name,
+shorthand, product, brand, product_id, default_quantity,
+action); this suite defers to it. An item's id never changes,
+so spec cards link by id and survive any brand or size edit.
 
-The config's **store** object names the store and how to reach it:
-**name**, **retailer_name** (the store's name on the platform),
-**platform** (the ordering platform's connector id), and a free
-**note** (which location, and anything else worth knowing). No
-skill in this suite names a store or a platform; both come from
-here.
-
-Entries sit in one of three groups, by churn, named the way a
-kitchen names them: **the line** — the front line, high churn,
-the regular store run; **backstock** — keeps a long while, rarely
-needed; **specials** — one-offs for a dish or hosting.
-**learned** holds grocery-like items seeded from the Inventory
-list that belong to no group yet. The config also holds **spec
-cards**: the meals, as named sets Peter can order whole or by
-missing pieces; a spec card's items list entry ids, or another
-spec card's id, across groups.
+**Spec cards** are the meals, as named sets Peter can order
+whole or by missing pieces; a spec card's items list entry ids,
+or another spec card's id, across groups.
 
 ## The suite
 
@@ -76,7 +57,7 @@ Skip gear, medication, and anything the notes route elsewhere.
 
 When an Inventory item is new or its product is unlearned, ask
 Peter which product he gets; after he answers, record it next to
-that item with `bin/restock learn` so the next run already knows.
+that item with `bin/inventory learn` so the next run already knows.
 
 ## Dependencies
 - ordering-platform (external, the platform named in the local config store.platform) — store search and cart; its connector doc governs its use

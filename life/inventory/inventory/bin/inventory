@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-# inventory — read Peter's Google Tasks Inventory list and complete
-# items on it. The shared front door for every domain that feeds off
-# the list (kitchen, camera batteries, ...).
+# inventory — read Peter's Google Tasks Inventory list, complete
+# items on it, and own the unified item catalog every domain's
+# entries live in. The shared front door for every domain that
+# feeds off the list (kitchen, camera batteries, ...).
 # Usage:
 #   bin/inventory list               open Inventory items, as JSON
 #   bin/inventory complete "<title>" mark an Inventory task complete
+#   bin/inventory items              the item catalog, as JSON
+#   bin/inventory resolve "<term>"   the one catalog item a term names
+#   bin/inventory learn "<name>" [--type T] [--kitchen-group G]
+#                    [--product P] [--brand B] [--shorthand S]
+#                    [--quantity Q] [--notes N]
+#                                    create or update a catalog item
 # Completion is fulfillment-gated by the calling skill: this CLI
 # only performs the write it is told to perform, after the caller
 # has verified the item was actually fulfilled (delivered, or its
@@ -14,6 +21,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -72,6 +80,76 @@ def open_tasks(cfg):
                      if i.get("status") != "completed"]
 
 
+def catalog_path():
+    return os.path.expanduser(skill_config()["local_config"])
+
+
+def catalog():
+    return load_json(catalog_path(), "local item catalog")
+
+
+def save_catalog(cat):
+    try:
+        with open(catalog_path(), "w") as f:
+            json.dump(cat, f, indent=2)
+            f.write("\n")
+    except Exception as e:
+        fail(f"cannot write local item catalog ({catalog_path()}): {e}")
+
+
+def cmd_items(_args):
+    print(json.dumps(catalog(), indent=2))
+
+
+def matches(item, term):
+    term = term.strip().lower()
+    names = [item.get("id", ""), item.get("name", ""),
+             item.get("shorthand", "")]
+    names += item.get("aliases", [])
+    return term in [n.lower() for n in names if n]
+
+
+def cmd_resolve(args):
+    hits = [i for i in catalog().get("items", [])
+            if matches(i, args.term)]
+    if not hits:
+        fail(f"no catalog item matches {args.term!r}")
+    if len(hits) > 1:
+        names = ", ".join(i.get("name", "?") for i in hits)
+        fail(f"{args.term!r} is ambiguous: {names}")
+    print(json.dumps(hits[0], indent=2))
+
+
+def slug_id(name):
+    return re.sub(r"[^a-z0-9]+", "-",
+                  name.lower().replace("'", "")).strip("-")
+
+
+def cmd_learn(args):
+    cat = catalog()
+    items = cat.setdefault("items", [])
+    item = next((i for i in items
+                 if i.get("name", "").lower() == args.name.lower()), None)
+    if item is None:
+        item = {"id": slug_id(args.name), "name": args.name,
+                "type": args.type or "other", "shorthand": "",
+                "aliases": [], "product": "", "brand": "",
+                "default_quantity": 1, "action": "ask", "notes": ""}
+        items.append(item)
+    elif args.type:
+        item["type"] = args.type
+    for field in ("product", "brand", "shorthand", "notes"):
+        value = getattr(args, field)
+        if value is not None:
+            item[field] = value
+    if args.quantity is not None:
+        item["default_quantity"] = args.quantity
+    if args.kitchen_group is not None:
+        item.setdefault("kitchen", {})["group"] = args.kitchen_group
+    save_catalog(cat)
+    print(json.dumps(item, indent=2))
+
+
 def cmd_list(_args):
     cfg = skill_config()
     _, tasks = open_tasks(cfg)
@@ -105,8 +183,21 @@ def main():
     sub.add_parser("list")
     p_complete = sub.add_parser("complete")
     p_complete.add_argument("title")
+    sub.add_parser("items")
+    p_resolve = sub.add_parser("resolve")
+    p_resolve.add_argument("term")
+    p_learn = sub.add_parser("learn")
+    p_learn.add_argument("name")
+    p_learn.add_argument("--type")
+    p_learn.add_argument("--kitchen-group")
+    p_learn.add_argument("--product")
+    p_learn.add_argument("--brand")
+    p_learn.add_argument("--shorthand")
+    p_learn.add_argument("--quantity", type=int)
+    p_learn.add_argument("--notes")
     args = parser.parse_args()
-    {"list": cmd_list, "complete": cmd_complete}[args.command](args)
+    {"list": cmd_list, "complete": cmd_complete, "items": cmd_items,
+     "resolve": cmd_resolve, "learn": cmd_learn}[args.command](args)
 
 
 if __name__ == "__main__":

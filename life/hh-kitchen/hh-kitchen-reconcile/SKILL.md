@@ -24,7 +24,7 @@ Runs after an HH Kitchen order is delivered.
 3. Update the config with what the order taught: a substitution
    Peter kept becomes the item's recorded product, a new brand he
    approved becomes its recorded brand, written with
-   `~/workspace/custom-skills/hh-kitchen-restock/bin/restock learn`.
+   `~/workspace/custom-skills/inventory/bin/inventory learn`.
    When it is unclear whether a substitution or brand should stick,
    ask Peter first and record only his answer.
 4. Report what was marked off, what stays, and what was learned,
@@ -32,7 +32,7 @@ Runs after an HH Kitchen order is delivered.
 
 ## Dependencies
 - hh-kitchen-restock (bin/restock) — the order log and the preference write; never reimplement them
-- inventory (bin/inventory) — completing Inventory items, after delivery is verified here
+- inventory (bin/inventory) — completing Inventory items, after delivery is verified here, and the learn write for preferences
 - ordering-platform (external, the platform named in the local config store.platform) — the order record that shows what was actually delivered
 - record-learning (bin/record-learning) — learning loop
 

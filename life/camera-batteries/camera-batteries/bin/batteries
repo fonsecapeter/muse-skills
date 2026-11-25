@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# batteries — read Peter's local camera-battery registry and
-# resolve a device (or an Inventory item naming one) to the
-# batteries it takes.
+# batteries — read Peter's local device registry and resolve a
+# device (or an Inventory item naming one) to the batteries it
+# takes. The batteries themselves are items in the inventory
+# skill's catalog, read through its CLI; the registry holds only
+# devices, whose slots reference catalog item ids.
 # Usage:
-#   bin/batteries list               the registry, as JSON
+#   bin/batteries list               devices, slots resolved, as JSON
 #   bin/batteries resolve "<text>"   devices named in the text,
 #                                    with their battery slots
 #                                    resolved to battery specs
@@ -13,6 +15,7 @@
 import argparse
 import json
 import os
+import subprocess
 import sys
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,14 +34,30 @@ def load_json(path, what):
         fail(f"cannot load {what} ({path}): {e}")
 
 
+def skill_cfg():
+    return load_json(os.path.join(SKILL_DIR, "config.json"), "config.json")
+
+
 def registry():
-    cfg = load_json(os.path.join(SKILL_DIR, "config.json"), "config.json")
-    return load_json(os.path.expanduser(cfg["local_config"]),
-                     "local battery registry")
+    return load_json(os.path.expanduser(skill_cfg()["local_config"]),
+                     "local device registry")
+
+
+def catalog_items():
+    items_cli = os.path.expanduser(skill_cfg()["items_cli"])
+    r = subprocess.run([items_cli, "items"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        fail(f"inventory CLI failed reading the catalog: "
+             f"{r.stderr.strip()[:300]}")
+    try:
+        return json.loads(r.stdout).get("items", [])
+    except Exception:
+        fail(f"unparseable catalog response: {r.stdout[:200]}")
 
 
 def resolve_device(reg, device):
-    by_id = {b["id"]: b for b in reg.get("batteries", [])}
+    by_id = {b["id"]: b for b in catalog_items()}
     slots = []
     for slot in device.get("slots", []):
         battery = by_id.get(slot["battery_id"])
@@ -52,7 +71,6 @@ def resolve_device(reg, device):
 def cmd_list(_args):
     reg = registry()
     print(json.dumps({
-        "batteries": reg.get("batteries", []),
         "devices": [resolve_device(reg, d)
                     for d in reg.get("devices", [])],
     }, indent=2))
@@ -71,9 +89,10 @@ def cmd_resolve(args):
     hits = [d for d in reg.get("devices", [])
             if device_matches(d, text)]
     if not hits:
-        named = [b for b in reg.get("batteries", [])
-                 if b.get("type", "").lower() in text
-                 or b.get("id", "").lower() in text]
+        named = [b for b in catalog_items()
+                 if b.get("type") == "battery"
+                 and (b.get("name", "").lower() in text
+                      or b.get("id", "").lower() in text)]
         if named:
             ids = {b["id"] for b in named}
             hits = [d for d in reg.get("devices", [])

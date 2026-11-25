@@ -16,6 +16,45 @@ through this skill; none of them talks to Google Tasks directly.
 - `bin/inventory complete "<title>"` — mark one item complete,
   by exact title, verified after the write.
 
+## The item
+
+Under the list sits one unified item catalog (the local config
+in `config.json`), owned by this skill. Every purchasable thing
+in every domain is the same core object — one model, with slight
+variations by type, the way Studio 1Way projects are all
+projects whether woodwork, ceramic, or painting:
+
+- **id**: stable unique id, assigned once at creation and never
+  changed. Everything else is an editable attribute; composites
+  link by id, so edits never break a link.
+- **name**, **shorthand** (the word Peter actually says),
+  **aliases**: how the item is named and resolved.
+  `bin/inventory resolve "<term>"` resolves a term to exactly
+  one item, across all domains.
+- **type**: the discriminator — `food`, `battery`, `household`,
+  `other`, extended as domains appear.
+- **product**, **brand**, **product_id**: the exact thing he
+  likes, on a domain's platform. Empty is a valid state: an
+  unspec'd item is picked fresh at order time, by preference.
+- **default_quantity**, **action** (default `ask`), **notes**.
+
+Type- and domain-specific fields live in namespaced blocks on
+the same record, never in the core: a battery carries
+`battery: {spec}`; kitchen membership is `kitchen: {group}`
+(the line, backstock, specials, learned). A domain reads its
+own block and ignores the rest.
+
+Higher-level things are composites that reference items by id
+and live in their domain's config: kitchen spec cards (meals),
+camera devices (slots of {item id, quantity}). The catalog is
+the bottom of the model; composites never duplicate item data.
+
+`bin/inventory items` prints the catalog. `bin/inventory learn
+"<name>"` creates or updates an item — the write path for
+preferences a domain learns (a brand Peter names, a product
+that worked) — with `--type` and `--kitchen-group` when the
+item is new.
+
 ## The completion rule
 
 An item is completed only when its need is actually fulfilled —
