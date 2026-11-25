@@ -5,15 +5,7 @@ description: "Reconcile a delivered HH Kitchen restock"
 
 # HH Kitchen Reconcile
 
-Runs after an HH Kitchen order is delivered, and closes the loop
-in two ways: Inventory tasks come off Peter's Google Tasks list
-only for items actually filled, and the config learns the brand
-preferences the order revealed. When either call is unsure, ask
-Peter instead of guessing.
-
-The order record, the Inventory access, and the learning write all
-live in the hh-kitchen-restock skill; this skill defers to its
-`bin/restock` CLI for them.
+Runs after an HH Kitchen order is delivered.
 
 ## Reconcile
 
@@ -40,7 +32,7 @@ live in the hh-kitchen-restock skill; this skill defers to its
 
 ## Dependencies
 - hh-kitchen-restock (bin/restock) — the order log, the Inventory completion, and the preference write; never reimplement them
-- ordering-platform (external, the platform named in the local config store.platform; currently instacart at /opt/hatch/bin/instacart) — the order record that shows what was actually delivered
+- ordering-platform (external, the platform named in the local config store.platform) — the order record that shows what was actually delivered
 - record-learning (bin/record-learning) — learning loop
 
 ## Learning loop
