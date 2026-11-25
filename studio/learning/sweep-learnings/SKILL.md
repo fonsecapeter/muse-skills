@@ -1,7 +1,8 @@
 # Sweep Learnings
 
 The sweep: implements pending skill learnings, audits the
-skills against `CONVENTIONS.md` (in this directory), and works the
+skills against the repo's `CONVENTIONS.md`
+(`~/projects/muse-skills/CONVENTIONS.md`), and works the
 central learning log. Learnings are recorded by the record-learning
 skill; this skill consumes them.
 
@@ -19,7 +20,8 @@ are implemented, printing what it removed.
    `main`, named for the work (`nightly-learnings`). If a learnings
    PR from a previous night is still open, add tonight's commit to
    its branch instead of opening a second PR.
-3. **Implement each learning** in its skill, per `CONVENTIONS.md`:
+3. **Implement each learning** in its skill, per the repo
+   `CONVENTIONS.md`:
    playbook in `SKILL.md`, machine values in `config.md`,
    deterministic work in a `bin/` CLI. Small durable edits; only
    what the evidence supports. Any code written follows the coding
@@ -43,7 +45,7 @@ are implemented, printing what it removed.
    fallback is committing straight to `main` — his call, recorded
    here when it changes.
 6. **Audit compliance.** Independently of logged learnings, check
-   every custom skill against `CONVENTIONS.md`: a "Learning loop"
+   every custom skill against the repo `CONVENTIONS.md`: a "Learning loop"
    section deferring to record-learning, a "Dependencies" section
    with all cross-skill calls declared, deterministic work scripted
    as `bin/` CLIs wherever possible, machine values in `config.md`,

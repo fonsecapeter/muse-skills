@@ -1,8 +1,10 @@
 # Skill Conventions
 
 Canonical conventions for Peter's personal skills (the muse-skills
-repo, symlinked into `~/workspace/custom-skills/`).
-Owned by the sweep-learnings skill; enforced by its nightly audit.
+repo, symlinked into `~/workspace/custom-skills/`). All skill
+authoring guidance lives in this file: the new-skill skill defers
+to it when a skill is created, and the sweep-learnings skill's
+nightly audit enforces it.
 **Follow these while drafting and while editing — every version complies,
 not just the first.** The nightly sweep audits for drift; it is not a
 substitute for following the conventions.
@@ -12,6 +14,10 @@ substitute for following the conventions.
 - **Playbook in `SKILL.md`.** Agentic judgment and prose live here.
 - **Machine values in `config.md`.** A fenced block (yaml or json); scripts
   read it at run time. Never hardcode machine values in scripts or prose.
+- **Mechanism in the skill, content in config.** A skill carries
+  how the work is done; the data it works on — values, lists,
+  names, learned preferences — lives in config (`config.md`, or a
+  local config outside the repo), never in the playbook or a CLI.
 - **Auth/connection knowledge in `CONNECTION.md`.** How the skill connects,
   what the credentials are called, where they live.
 - **Deterministic work in `bin/` CLIs.** Script every deterministic part
@@ -38,6 +44,20 @@ substitute for following the conventions.
 - **Crons are one-liners.** A cron body invokes the skill
   (`Run the <name> skill: follow ~/workspace/custom-skills/<name>/SKILL.md ...`).
   The playbook lives in the skill, never in the cron.
+- **Cadence lives in cron definitions.** Skill names and
+  descriptions name the job; the cron carries the schedule.
+- **Split a multi-job ask into grouped single-job skills.** One
+  skill per job, however many jobs the ask carries, grouped under
+  a shared group directory (the todo, haircut, and hh-kitchen
+  suites) — not one combined skill with subcommands. A suite's
+  shared model (config, vocabulary, CLI) lives in one model skill;
+  each phase skill defers to it.
+- **Suites tend to look like REST CRUD APIs.** A model skill owns
+  the resource and its data; the phase skills are the operations
+  on it; a `bin/` CLI exposes a small verb set (list, resolve,
+  learn, complete) rather than free-form commands. Design with
+  that shape in mind — when a suite feels tangled, check whether
+  the resource and its operations are cleanly separated.
 
 ## Writing the playbook
 
@@ -51,7 +71,21 @@ substitute for following the conventions.
 - **One source of truth across related skills.** A fact, model, or
   vocabulary is defined once, in the skill that owns it; sibling
   skills defer to it in a line instead of restating it. Duplication
-  across skills is drift.
+  across skills is drift. Philosophically this is encapsulation:
+  a skill owns its internals, and siblings work across the
+  boundary — defer to the owner instead of copying what it owns.
+  Apply this at authoring time, not in a
+  cleanup diff: in a suite, the model skill's suite list is
+  one-line roles only, each operative rule lives in the one skill
+  that acts on it, deferral is stated once (in Dependencies, not
+  again in the intro), and current bindings — store, platform, CLI
+  paths — are never spelled out in prose when the config already
+  names them.
+- **Descriptions are short usage matchers.** The `skill.yaml` and
+  SKILL.md frontmatter descriptions name the job in a few words —
+  they are the trigger text a run matches on.
+- **Plain statements, positive framing.** Steps and rules read as
+  plain statements of what to do and what happens.
 - **No generic boilerplate.** A caution that applies to every skill
   belongs to the platform rules, not repeated in each playbook.
 - **Say what the skill does, not how it is built.** Intros don't
@@ -84,11 +118,21 @@ substitute for following the conventions.
 - The skills live in a public git repo (fonsecapeter/muse-skills).
   Anything written into a skill — playbook, config, test fixture,
   learning — is public.
-- Skills carry mechanism, not content or secrets. Credentials belong in
-  the credential store; personal data and private identifiers belong in
-  the systems a skill points at, not in the skill itself.
+- Credentials belong in the credential store; personal data and
+  private identifiers belong in the systems a skill points at, not
+  in the skill itself.
 - Use judgment about what counts as sensitive. When in doubt, leave it
   out or ask Peter.
+
+## The coding philosophy
+
+- The coding philosophy (carried by the **coding** skill) is the
+  default standard here, for authoring as for code: its principles
+  apply to skills unless this file says otherwise. This file adds
+  skill-specific rules on top of it, and where the two differ, this
+  file takes precedence.
+- Any code written for a skill — `bin/` CLIs, tests, helper
+  scripts — follows the coding skill directly.
 
 ## Durable rules — placement + trigger
 
