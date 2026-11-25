@@ -1,5 +1,5 @@
-name: new_skill
-title: New skill
+name: skill_authoring
+title: Skill authoring
 description: 'Create a new personal skill'
 include_in_prompt: true
 availability:

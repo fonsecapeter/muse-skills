@@ -2,7 +2,7 @@
 
 Canonical conventions for Peter's personal skills (the muse-skills
 repo, symlinked into `~/workspace/custom-skills/`). All skill
-authoring guidance lives in this file: the new-skill skill defers
+authoring guidance lives in this file: the skill-authoring skill defers
 to it when a skill is created, and the sweep-learnings skill's
 nightly audit enforces it.
 **Follow these while drafting and while editing — every version complies,
@@ -104,7 +104,7 @@ substitute for following the conventions.
   roster, flat. Edit a skill in the repo checkout (editing through
   the symlink is the same file), never in a separate copy.
 - New skills are created in the repo: draft in a bucket, add the
-  roster entry, run `bin/link-skills` (see the new-skill skill).
+  roster entry, run `bin/link-skills` (see the skill-authoring skill).
 - Never recreate a second tree or a mirrored copy. If a skill
   moves, move it — and update every cron body, config pointer, and
   dependency line in the same change (skill-deps `bin/map` verifies

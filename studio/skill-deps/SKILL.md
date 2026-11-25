@@ -48,7 +48,7 @@ Example:
 - record-learning (bin/record-learning) — learning loop
 ```
 
-New skills: the new-skill skill requires this section — it wraps the
+New skills: the skill-authoring skill requires this section — it wraps the
 built-in skill-creator and applies Peter's conventions on top. If a skill
 calls another skill's CLI, it must be declared here.
 

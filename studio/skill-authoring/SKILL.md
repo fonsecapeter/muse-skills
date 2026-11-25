@@ -1,4 +1,4 @@
-# New Skill
+# Skill Authoring
 
 Creates a new personal skill in the muse-skills repo, linked live
 into `~/workspace/custom-skills/`. Two sources govern the work:
@@ -35,7 +35,7 @@ From here the sweep audits the new skill against
 ## Learning loop
 
 Owned by the record-learning skill (see Dependencies). Record with
-`~/workspace/custom-skills/record-learning/bin/record-learning new-skill "<learning>"`.
+`~/workspace/custom-skills/record-learning/bin/record-learning skill-authoring "<learning>"`.
 
 ## Dependencies
 
