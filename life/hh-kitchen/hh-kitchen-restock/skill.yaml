@@ -1,6 +1,6 @@
 name: hh_kitchen_restock
 title: HH Kitchen Restock
-description: 'Restock kitchen staples from the configured store'
+description: 'Restock the kitchen — the line, backstock, and specials — from the configured store'
 include_in_prompt: true
 availability:
   confidential_vm: true

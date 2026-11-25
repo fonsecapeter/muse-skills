@@ -15,8 +15,9 @@ submits an order.
 1. Take the items Peter checked in his gather reply. Resolve every
    shorthand with `~/workspace/custom-skills/hh-kitchen-restock/bin/restock resolve`
    before searching, and use each entry's learned product and brand.
-2. If Peter names a recipe, expand it from the config's
-   recipes: the full set, or only the pieces he says are missing.
+2. If Peter names a spec card, expand it from the config's
+   spec cards: the full set, or only the pieces he says are
+   missing.
    Resolve each item like any other entry.
 3. Build the cart at the store and on the platform named in the
    local config, following that platform's connector doc for

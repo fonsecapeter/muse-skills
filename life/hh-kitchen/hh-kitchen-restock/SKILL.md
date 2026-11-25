@@ -17,8 +17,8 @@ Inventory list; it never touches a cart.
 Each entry carries the same fields, whichever group it sits in:
 
 - **id**: the entry's stable unique id, assigned once when the
-  entry is created and never changed. Recipes link to entries by
-  id. Everything else about an entry — name, brand, product,
+  entry is created and never changed. Spec cards link to entries
+  by id. Everything else about an entry — name, brand, product,
   size — is an editable attribute; changing any of them keeps the
   id, so links never break.
 - **name**: the plain item name ("oat milk").
@@ -42,14 +42,15 @@ The config's **store** object names the store and how to reach it:
 skill in this suite names a store or a platform; both come from
 here.
 
-Entries sit in one of three groups, by churn: **staples**, the
-front line — high churn, the regular store run; **backstock** —
-keeps a long while, rarely needed; **occasional** — one-offs for
-recipes or hosting. **learned** holds grocery-like items seeded
-from the Inventory list that belong to no group yet. The config
-also holds **recipes**: named sets Peter can order whole or by
-missing pieces; a recipe's items list entry ids, or another
-recipe's id, across groups.
+Entries sit in one of three groups, by churn, named the way a
+kitchen names them: **the line** — the front line, high churn,
+the regular store run; **backstock** — keeps a long while, rarely
+needed; **specials** — one-offs for a dish or hosting.
+**learned** holds grocery-like items seeded from the Inventory
+list that belong to no group yet. The config also holds **spec
+cards**: the meals, as named sets Peter can order whole or by
+missing pieces; a spec card's items list entry ids, or another
+spec card's id, across groups.
 
 ## The suite
 
