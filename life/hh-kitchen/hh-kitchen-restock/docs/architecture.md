@@ -33,7 +33,7 @@ flowchart TB
         model -.-> reconcile
     end
     subgraph config["CONFIG — local, never in repo"]
-        localcfg[("restock.json<br/>store · platform · groups<br/>recipes · brands · orders")]
+        localcfg[("restock.json<br/>store · platform · the line<br/>backstock · specials · spec cards · orders")]
         repocfg[("repo config.json<br/>pointers only")]
     end
     subgraph connectors["CONNECTORS — external use"]

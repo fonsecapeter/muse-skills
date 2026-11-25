@@ -2,7 +2,7 @@
 # restock — read and maintain the local HH Kitchen restock config,
 # and read Peter's Google Tasks Inventory list.
 # Usage:
-#   bin/restock list                 grouped items + recipes, as JSON
+#   bin/restock list                 grouped items + spec cards, as JSON
 #   bin/restock inventory            open Inventory items, as JSON
 #   bin/restock resolve "<term>"     the one entry a shorthand names
 #   bin/restock learn "<name>" [--product P] [--brand B]
@@ -59,19 +59,19 @@ def save_local_config(cfg):
 
 
 def all_entries(cfg):
-    return (cfg.get("staples", []) + cfg.get("backstock", [])
-            + cfg.get("occasional", []) + cfg.get("learned", []))
+    return (cfg.get("line", []) + cfg.get("backstock", [])
+            + cfg.get("specials", []) + cfg.get("learned", []))
 
 
 def cmd_list(_args):
     cfg = local_config()
     print(json.dumps({
         "store": cfg.get("store", {}),
-        "staples": cfg.get("staples", []),
+        "line": cfg.get("line", []),
         "backstock": cfg.get("backstock", []),
-        "occasional": cfg.get("occasional", []),
+        "specials": cfg.get("specials", []),
         "learned": cfg.get("learned", []),
-        "recipes": cfg.get("recipes", []),
+        "spec_cards": cfg.get("spec_cards", []),
         "orders": cfg.get("orders", []),
     }, indent=2))
 
